@@ -1,0 +1,1 @@
+[![Project Status: Moved to https://github.com/mysql-net/MySqlConnector – The project has been moved to a new location, and the version at that location should be considered authoritative.](http://www.repostatus.org/badges/latest/moved.svg)](http://www.repostatus.org/#moved) to [mysql-net/MySqlConnector](https://github.com/mysql-net/MySqlConnector)
