@@ -51,18 +51,40 @@ namespace MySql.Data.Protocol.Serialization
 
 		public static ValueTask<ArraySegment<byte>> ReadPayloadAsync(BufferedByteReader bufferedByteReader, IByteHandler byteHandler, Func<int?> getNextSequenceNumber, ArraySegment<byte> previousPayloads, ProtocolErrorBehavior protocolErrorBehavior, IOBehavior ioBehavior)
 		{
-			return ReadPacketAsync(bufferedByteReader, byteHandler, getNextSequenceNumber, protocolErrorBehavior, ioBehavior).ContinueWith(packet =>
-				ContinueRead(bufferedByteReader, byteHandler, getNextSequenceNumber, previousPayloads, packet, protocolErrorBehavior, ioBehavior));
+			var readPacketTask = ReadPacketAsync(bufferedByteReader, byteHandler, getNextSequenceNumber, protocolErrorBehavior, ioBehavior);
+			while (readPacketTask.IsCompleted)
+			{
+				ValueTask<ArraySegment<byte>> result;
+				if (HasReadPayload(bufferedByteReader, byteHandler, getNextSequenceNumber, ref previousPayloads, readPacketTask.Result, protocolErrorBehavior, ioBehavior, out result))
+					return result;
+
+				readPacketTask = ReadPacketAsync(bufferedByteReader, byteHandler, getNextSequenceNumber, protocolErrorBehavior, ioBehavior);
+			}
+
+			return AddContinuation(readPacketTask, bufferedByteReader, byteHandler, getNextSequenceNumber, previousPayloads, protocolErrorBehavior, ioBehavior);
+
+			ValueTask<ArraySegment<byte>> AddContinuation(ValueTask<Packet> readPacketTask_, BufferedByteReader bufferedByteReader_, IByteHandler byteHandler_, Func<int?> getNextSequenceNumber_, ArraySegment<byte> previousPayloads_, ProtocolErrorBehavior protocolErrorBehavior_, IOBehavior ioBehavior_)
+			{
+				return readPacketTask_.ContinueWith(packet =>
+					HasReadPayload(bufferedByteReader_, byteHandler_, getNextSequenceNumber_, ref previousPayloads_, packet, protocolErrorBehavior_, ioBehavior_, out var result_) ? result_ :
+						ReadPayloadAsync(bufferedByteReader_, byteHandler_, getNextSequenceNumber_, previousPayloads_, protocolErrorBehavior_, ioBehavior_));
+			}
 		}
 
-		private static ValueTask<ArraySegment<byte>> ContinueRead(BufferedByteReader bufferedByteReader, IByteHandler byteHandler, Func<int?> getNextSequenceNumber, ArraySegment<byte> previousPayloads, Packet packet, ProtocolErrorBehavior protocolErrorBehavior, IOBehavior ioBehavior)
+		private static bool HasReadPayload(BufferedByteReader bufferedByteReader, IByteHandler byteHandler, Func<int?> getNextSequenceNumber, ref ArraySegment<byte> previousPayloads, Packet packet, ProtocolErrorBehavior protocolErrorBehavior, IOBehavior ioBehavior, out ValueTask<ArraySegment<byte>> result)
 		{
 			if (packet == null && protocolErrorBehavior == ProtocolErrorBehavior.Ignore)
-				return default(ValueTask<ArraySegment<byte>>);
+			{
+				result = default(ValueTask<ArraySegment<byte>>);
+				return true;
+			}
 
 			var previousPayloadsArray = previousPayloads.Array;
 			if (previousPayloadsArray == null && packet.Contents.Count < MaxPacketSize)
-				return new ValueTask<ArraySegment<byte>>(packet.Contents);
+			{
+				result = new ValueTask<ArraySegment<byte>>(packet.Contents);
+				return true;
+			}
 
 			if (previousPayloadsArray == null)
 				previousPayloadsArray = new byte[ProtocolUtility.MaxPacketSize + 1];
@@ -72,9 +94,14 @@ namespace MySql.Data.Protocol.Serialization
 			Buffer.BlockCopy(packet.Contents.Array, packet.Contents.Offset, previousPayloadsArray, previousPayloads.Offset + previousPayloads.Count, packet.Contents.Count);
 			previousPayloads = new ArraySegment<byte>(previousPayloadsArray, previousPayloads.Offset, previousPayloads.Count + packet.Contents.Count);
 
-			return packet.Contents.Count < ProtocolUtility.MaxPacketSize ?
-				new ValueTask<ArraySegment<byte>>(previousPayloads) :
-				ReadPayloadAsync(bufferedByteReader, byteHandler, getNextSequenceNumber, previousPayloads, protocolErrorBehavior, ioBehavior);
+			if (packet.Contents.Count < ProtocolUtility.MaxPacketSize)
+			{
+				result = new ValueTask<ArraySegment<byte>>(previousPayloads);
+				return true;
+			}
+
+			result = default(ValueTask<ArraySegment<byte>>);
+			return false;
 		}
 
 		public static ValueTask<int> WritePayloadAsync(IByteHandler byteHandler, Func<int> getNextSequenceNumber, ArraySegment<byte> payload, IOBehavior ioBehavior)
