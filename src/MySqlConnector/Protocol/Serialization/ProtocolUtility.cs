@@ -11,43 +11,52 @@ namespace MySql.Data.Protocol.Serialization
     {
 		public static ValueTask<Packet> ReadPacketAsync(BufferedByteReader bufferedByteReader, IByteHandler byteHandler, Func<int?> getNextSequenceNumber, ProtocolErrorBehavior protocolErrorBehavior, IOBehavior ioBehavior)
 		{
-			return bufferedByteReader.ReadBytesAsync(byteHandler, 4, ioBehavior)
-				.ContinueWith(headerBytes =>
-				{
-					if (headerBytes.Count < 4)
-					{
-						return protocolErrorBehavior == ProtocolErrorBehavior.Throw ?
-							ValueTaskExtensions.FromException<Packet>(new EndOfStreamException()) :
-							default(ValueTask<Packet>);
-					}
+			var headerBytesTask = bufferedByteReader.ReadBytesAsync(byteHandler, 4, ioBehavior);
+			if (headerBytesTask.IsCompleted)
+				return ReadPacketAfterHeader(headerBytesTask.Result, bufferedByteReader, byteHandler, getNextSequenceNumber, protocolErrorBehavior, ioBehavior);
+			return AddContinuation(headerBytesTask, bufferedByteReader, byteHandler, getNextSequenceNumber, protocolErrorBehavior, ioBehavior);
 
-					var payloadLength = (int) SerializationUtility.ReadUInt32(headerBytes.Array, headerBytes.Offset, 3);
-					int packetSequenceNumber = headerBytes.Array[headerBytes.Offset + 3];
-
-					var expectedSequenceNumber = getNextSequenceNumber() % 256;
-					if (expectedSequenceNumber.HasValue && packetSequenceNumber != expectedSequenceNumber.Value)
-					{
-						if (protocolErrorBehavior == ProtocolErrorBehavior.Ignore)
-							return default(ValueTask<Packet>);
-
-						var exception = MySqlProtocolException.CreateForPacketOutOfOrder(expectedSequenceNumber.Value, packetSequenceNumber);
-						return ValueTaskExtensions.FromException<Packet>(exception);
-					}
-
-					return bufferedByteReader.ReadBytesAsync(byteHandler, payloadLength, ioBehavior)
-						.ContinueWith(payloadBytes =>
-						{
-							if (payloadBytes.Count < payloadLength)
-							{
-								return protocolErrorBehavior == ProtocolErrorBehavior.Throw ?
-									ValueTaskExtensions.FromException<Packet>(new EndOfStreamException()) :
-									default(ValueTask<Packet>);
-							}
-
-							return new ValueTask<Packet>(new Packet(packetSequenceNumber, payloadBytes));
-						});
-				});
+			// NOTE: use a local function (with no captures) to defer creation of lambda objects
+			ValueTask<Packet> AddContinuation(ValueTask<ArraySegment<byte>> headerBytes_, BufferedByteReader bufferedByteReader_, IByteHandler byteHandler_, Func<int?> getNextSequenceNumber_, ProtocolErrorBehavior protocolErrorBehavior_, IOBehavior ioBehavior_) =>
+				headerBytes_.ContinueWith(x => ReadPacketAfterHeader(x, bufferedByteReader_, byteHandler_, getNextSequenceNumber_, protocolErrorBehavior_, ioBehavior_));
 		}
+
+		private static ValueTask<Packet> ReadPacketAfterHeader(ArraySegment<byte> headerBytes, BufferedByteReader bufferedByteReader, IByteHandler byteHandler, Func<int?> getNextSequenceNumber, ProtocolErrorBehavior protocolErrorBehavior, IOBehavior ioBehavior)
+		{
+			if (headerBytes.Count < 4)
+			{
+				return protocolErrorBehavior == ProtocolErrorBehavior.Throw ?
+					ValueTaskExtensions.FromException<Packet>(new EndOfStreamException()) :
+					default(ValueTask<Packet>);
+			}
+
+			var payloadLength = (int) SerializationUtility.ReadUInt32(headerBytes.Array, headerBytes.Offset, 3);
+			int packetSequenceNumber = headerBytes.Array[headerBytes.Offset + 3];
+
+			var expectedSequenceNumber = getNextSequenceNumber() % 256;
+			if (expectedSequenceNumber.HasValue && packetSequenceNumber != expectedSequenceNumber.Value)
+			{
+				if (protocolErrorBehavior == ProtocolErrorBehavior.Ignore)
+					return default(ValueTask<Packet>);
+
+				var exception = MySqlProtocolException.CreateForPacketOutOfOrder(expectedSequenceNumber.Value, packetSequenceNumber);
+				return ValueTaskExtensions.FromException<Packet>(exception);
+			}
+
+			var payloadBytesTask = bufferedByteReader.ReadBytesAsync(byteHandler, payloadLength, ioBehavior);
+			if (payloadBytesTask.IsCompleted)
+				return CreatePacketFromPayload(payloadBytesTask.Result, payloadLength, packetSequenceNumber, protocolErrorBehavior);
+			return AddContinuation(payloadBytesTask, payloadLength, packetSequenceNumber, protocolErrorBehavior);
+
+			// NOTE: use a local function (with no captures) to defer creation of lambda objects
+			ValueTask<Packet> AddContinuation(ValueTask<ArraySegment<byte>> payloadBytesTask_, int payloadLength_, int packetSequenceNumber_, ProtocolErrorBehavior protocolErrorBehavior_)
+				=> payloadBytesTask_.ContinueWith(x => CreatePacketFromPayload(x, payloadLength_, packetSequenceNumber_, protocolErrorBehavior_));
+		}
+
+		private static ValueTask<Packet> CreatePacketFromPayload(ArraySegment<byte> payloadBytes, int payloadLength, int packetSequenceNumber, ProtocolErrorBehavior protocolErrorBehavior) =>
+			payloadBytes.Count >= payloadLength ? new ValueTask<Packet>(new Packet(packetSequenceNumber, payloadBytes)) :
+				protocolErrorBehavior == ProtocolErrorBehavior.Throw ? ValueTaskExtensions.FromException<Packet>(new EndOfStreamException()) :
+				default(ValueTask<Packet>);
 
 		public static ValueTask<ArraySegment<byte>> ReadPayloadAsync(BufferedByteReader bufferedByteReader, IByteHandler byteHandler, Func<int?> getNextSequenceNumber, ArraySegment<byte> previousPayloads, ProtocolErrorBehavior protocolErrorBehavior, IOBehavior ioBehavior)
 		{
@@ -63,6 +72,7 @@ namespace MySql.Data.Protocol.Serialization
 
 			return AddContinuation(readPacketTask, bufferedByteReader, byteHandler, getNextSequenceNumber, previousPayloads, protocolErrorBehavior, ioBehavior);
 
+			// NOTE: use a local function (with no captures) to defer creation of lambda objects
 			ValueTask<ArraySegment<byte>> AddContinuation(ValueTask<Packet> readPacketTask_, BufferedByteReader bufferedByteReader_, IByteHandler byteHandler_, Func<int?> getNextSequenceNumber_, ArraySegment<byte> previousPayloads_, ProtocolErrorBehavior protocolErrorBehavior_, IOBehavior ioBehavior_)
 			{
 				return readPacketTask_.ContinueWith(packet =>
