@@ -167,10 +167,10 @@ namespace MySql.Data.MySqlClient.Results
 				var payloadValueTask = Session.ReceiveReplyAsync(ioBehavior, CancellationToken.None);
 				return payloadValueTask.IsCompletedSuccessfully
 					? new ValueTask<Row>(ScanRowAsyncRemainder(payloadValueTask.Result))
-					: new ValueTask<Row>(ScanRowAsyncAwaited(payloadValueTask.AsTask(), cancellationToken));
+					: new ValueTask<Row>(ScanRowAsyncAwaited(payloadValueTask, cancellationToken));
 			}
 
-			async Task<Row> ScanRowAsyncAwaited(Task<PayloadData> payloadTask, CancellationToken token)
+			async Task<Row> ScanRowAsyncAwaited(ValueOrCallback<PayloadData> payloadTask, CancellationToken token)
 			{
 				try
 				{

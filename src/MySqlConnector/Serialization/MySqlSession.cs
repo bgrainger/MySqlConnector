@@ -29,6 +29,13 @@ namespace MySql.Data.Serialization
 			CreatedUtc = DateTime.UtcNow;
 			Pool = pool;
 			PoolGeneration = poolGeneration;
+
+			m_setFailed = x =>
+			{
+				lock (m_lock)
+					m_state = State.Failed;
+				return ValueOrCallback.FromException<PayloadData>(x);
+			};
 		}
 
 		public int Id { get; }
@@ -304,23 +311,23 @@ namespace MySql.Data.Serialization
 		}
 
 		// Starts a new conversation with the server by sending the first packet.
-		public ValueTask<int> SendAsync(PayloadData payload, IOBehavior ioBehavior, CancellationToken cancellationToken)
+		public ValueOrCallback<int> SendAsync(PayloadData payload, IOBehavior ioBehavior, CancellationToken cancellationToken)
 		{
 			m_payloadHandler.StartNewConversation();
 			return SendReplyAsync(payload, ioBehavior, cancellationToken);
 		}
 
 		// Starts a new conversation with the server by receiving the first packet.
-		public ValueTask<PayloadData> ReceiveAsync(IOBehavior ioBehavior, CancellationToken cancellationToken)
+		public ValueOrCallback<PayloadData> ReceiveAsync(IOBehavior ioBehavior, CancellationToken cancellationToken)
 		{
 			m_payloadHandler.StartNewConversation();
 			return ReceiveReplyAsync(ioBehavior, cancellationToken);
 		}
 
 		// Continues a conversation with the server by receiving a response to a packet sent with 'Send' or 'SendReply'.
-		public ValueTask<PayloadData> ReceiveReplyAsync(IOBehavior ioBehavior, CancellationToken cancellationToken)
+		public ValueOrCallback<PayloadData> ReceiveReplyAsync(IOBehavior ioBehavior, CancellationToken cancellationToken)
 		{
-			ValueTask<ArraySegment<byte>> task;
+			ValueOrCallback<ArraySegment<byte>> task;
 			try
 			{
 				VerifyConnected();
@@ -328,26 +335,26 @@ namespace MySql.Data.Serialization
 			}
 			catch (Exception ex)
 			{
-				task = ValueTaskExtensions.FromException<ArraySegment<byte>>(ex);
+				task = ValueOrCallback.FromException<ArraySegment<byte>>(ex);
 			}
 
-			if (task.IsCompletedSuccessfully)
-			{
-				var payload = new PayloadData(task.Result);
-				if (payload.HeaderByte != ErrorPayload.Signature)
-					return new ValueTask<PayloadData>(payload);
+			return task.Then(s_createPayloadFromData, m_setFailed);
+		}
 
-				var exception = ErrorPayload.Create(payload).ToException();
-				return ValueTaskExtensions.FromException<PayloadData>(exception);
-			}
+		private static ValueOrCallback<PayloadData> CreatePayloadFromData(ArraySegment<byte> data)
+		{
+			var payload = new PayloadData(data);
+			if (payload.HeaderByte != ErrorPayload.Signature)
+				return ValueOrCallback.FromResult(payload);
 
-			return new ValueTask<PayloadData>(task.AsTask().ContinueWith(TryAsyncContinuation, cancellationToken, TaskContinuationOptions.LazyCancellation | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default));
+			var exception = ErrorPayload.Create(payload).ToException();
+			return ValueOrCallback.FromException<PayloadData>(exception);
 		}
 
 		// Continues a conversation with the server by sending a reply to a packet received with 'Receive' or 'ReceiveReply'.
-		public ValueTask<int> SendReplyAsync(PayloadData payload, IOBehavior ioBehavior, CancellationToken cancellationToken)
+		public ValueOrCallback<int> SendReplyAsync(PayloadData payload, IOBehavior ioBehavior, CancellationToken cancellationToken)
 		{
-			ValueTask<int> task;
+			ValueOrCallback<int> task;
 			try
 			{
 				VerifyConnected();
@@ -355,13 +362,10 @@ namespace MySql.Data.Serialization
 			}
 			catch (Exception ex)
 			{
-				task = ValueTaskExtensions.FromException<int>(ex);
+				task = new ValueOrCallback<int>(ex);
 			}
 
-			if (task.IsCompletedSuccessfully)
-				return task;
-
-			return new ValueTask<int>(task.AsTask().ContinueWith(TryAsyncContinuation, cancellationToken, TaskContinuationOptions.LazyCancellation | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default));
+			return task;
 		}
 
 		private void VerifyConnected()
@@ -624,32 +628,6 @@ namespace MySql.Data.Serialization
 			}
 		}
 
-		private int TryAsyncContinuation(Task<int> task)
-		{
-			if (task.IsFaulted)
-			{
-				SetFailed();
-				task.GetAwaiter().GetResult();
-			}
-			return 0;
-		}
-
-		private PayloadData TryAsyncContinuation(Task<ArraySegment<byte>> task)
-		{
-			if (task.IsFaulted)
-				SetFailed();
-			var payload = new PayloadData(task.GetAwaiter().GetResult());
-			payload.ThrowIfError();
-			return payload;
-		}
-
-		private void SetFailed()
-		{
-			lock (m_lock)
-				m_state = State.Failed;
-		}
-
-
 		private void VerifyState(State state)
 		{
 			if (m_state != state)
@@ -692,8 +670,11 @@ namespace MySql.Data.Serialization
 			Failed,
 		}
 
+		static readonly Func<ArraySegment<byte>, ValueOrCallback<PayloadData>> s_createPayloadFromData = CreatePayloadFromData;
+
 		readonly object m_lock;
 		readonly ArraySegmentHolder<byte> m_payloadCache;
+		readonly Func<Exception, ValueOrCallback<PayloadData>> m_setFailed;
 		State m_state;
 		string m_hostname = "";
 		TcpClient m_tcpClient;

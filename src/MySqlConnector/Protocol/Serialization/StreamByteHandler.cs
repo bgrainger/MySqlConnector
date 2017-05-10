@@ -11,6 +11,7 @@ namespace MySql.Data.Protocol.Serialization
 			m_stream = stream;
 		}
 
+#if OLD
 		public ValueTask<int> ReadBytesAsync(ArraySegment<byte> buffer, IOBehavior ioBehavior)
 		{
 			return (ioBehavior == IOBehavior.Asynchronous) ?
@@ -39,7 +40,17 @@ namespace MySql.Data.Protocol.Serialization
 				return 0;
 			}
 		}
+#endif
 
 		readonly Stream m_stream;
+		public ValueOrCallback<int> ReadBytesAsync(ArraySegment<byte> buffer, IOBehavior ioBehavior)
+		{
+			throw new NotImplementedException();
+		}
+
+		public ValueOrCallback<int> WriteBytesAsync(ArraySegment<byte> data, IOBehavior ioBehavior)
+		{
+			throw new NotImplementedException();
+		}
 	}
 }

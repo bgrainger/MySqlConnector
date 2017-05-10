@@ -18,6 +18,7 @@ namespace MySql.Data.Protocol.Serialization
 			m_compressedBufferedByteReader = new BufferedByteReader();
 		}
 
+#if OLD
 		public void StartNewConversation()
 		{
 			m_compressedSequenceNumber = 0;
@@ -230,6 +231,23 @@ namespace MySql.Data.Protocol.Serialization
 			}
 			return (((uint) s2) << 16) | (uint) s1;
 		}
+#else
+		public void StartNewConversation()
+		{
+			throw new NotImplementedException();
+		}
+
+		public IByteHandler ByteHandler { get; set; }
+		public ValueOrCallback<ArraySegment<byte>> ReadPayloadAsync(ArraySegmentHolder<byte> cache, ProtocolErrorBehavior protocolErrorBehavior, IOBehavior ioBehavior)
+		{
+			throw new NotImplementedException();
+		}
+
+		public ValueOrCallback<int> WritePayloadAsync(ArraySegment<byte> payload, IOBehavior ioBehavior)
+		{
+			throw new NotImplementedException();
+		}
+#endif
 
 		// CompressedByteHandler implements IByteHandler and delegates reading bytes back to the CompressedPayloadHandler class.
 		private class CompressedByteHandler : IByteHandler
@@ -240,10 +258,23 @@ namespace MySql.Data.Protocol.Serialization
 				m_protocolErrorBehavior = protocolErrorBehavior;
 			}
 
+#if OLD
 			public ValueTask<int> ReadBytesAsync(ArraySegment<byte> buffer, IOBehavior ioBehavior) =>
 				m_compressedPayloadHandler.ReadBytesAsync(buffer, m_protocolErrorBehavior, ioBehavior);
 
 			public ValueTask<int> WriteBytesAsync(ArraySegment<byte> data, IOBehavior ioBehavior) => throw new NotSupportedException();
+#else
+			public ValueOrCallback<int> ReadBytesAsync(ArraySegment<byte> buffer, IOBehavior ioBehavior)
+			{
+				throw new NotImplementedException();
+			}
+
+			public ValueOrCallback<int> WriteBytesAsync(ArraySegment<byte> data, IOBehavior ioBehavior)
+			{
+				throw new NotImplementedException();
+			}
+#endif
+
 
 			readonly CompressedPayloadHandler m_compressedPayloadHandler;
 			readonly ProtocolErrorBehavior m_protocolErrorBehavior;
@@ -254,9 +285,11 @@ namespace MySql.Data.Protocol.Serialization
 		readonly IByteHandler m_byteHandler;
 		readonly BufferedByteReader m_bufferedByteReader;
 		readonly BufferedByteReader m_compressedBufferedByteReader;
+#if OLD
 		int m_compressedSequenceNumber;
 		int m_uncompressedSequenceNumber;
 		ArraySegment<byte> m_remainingData;
 		bool m_isContinuationPacket;
+#endif
 	}
 }

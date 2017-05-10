@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Threading.Tasks;
 
 namespace MySql.Data.Protocol.Serialization
 {
@@ -10,14 +9,14 @@ namespace MySql.Data.Protocol.Serialization
 			m_buffer = new byte[16384];
 		}
 
-		public ValueTask<ArraySegment<byte>> ReadBytesAsync(IByteHandler byteHandler, int count, IOBehavior ioBehavior)
+		public ValueOrCallback<ArraySegment<byte>> ReadBytesAsync(IByteHandler byteHandler, int count, IOBehavior ioBehavior)
 		{
 			// check if read can be satisfied from the buffer
 			if (m_remainingData.Count >= count)
 			{
 				var readBytes = m_remainingData.Slice(0, count);
 				m_remainingData = m_remainingData.Slice(count);
-				return new ValueTask<ArraySegment<byte>>(readBytes);
+				return new ValueOrCallback<ArraySegment<byte>>(readBytes);
 			}
 
 			// get a buffer big enough to hold all the data, and move any buffered data to the beginning
@@ -31,24 +30,24 @@ namespace MySql.Data.Protocol.Serialization
 			return ReadBytesAsync(byteHandler, new ArraySegment<byte>(buffer, m_remainingData.Count, buffer.Length - m_remainingData.Count), count, ioBehavior);
 		}
 
-		private ValueTask<ArraySegment<byte>> ReadBytesAsync(IByteHandler byteHandler, ArraySegment<byte> buffer, int totalBytesToRead, IOBehavior ioBehavior)
+		private ValueOrCallback<ArraySegment<byte>> ReadBytesAsync(IByteHandler byteHandler, ArraySegment<byte> buffer, int totalBytesToRead, IOBehavior ioBehavior)
 		{
 			// keep reading data synchronously while it is available
 			var readBytesTask = byteHandler.ReadBytesAsync(buffer, ioBehavior);
 			while (readBytesTask.IsCompleted)
 			{
-				ValueTask<ArraySegment<byte>> result;
+				ValueOrCallback<ArraySegment<byte>> result;
 				if (HasReadAllData(readBytesTask.Result, ref buffer, totalBytesToRead, out result))
 					return result;
 
 				readBytesTask = byteHandler.ReadBytesAsync(buffer, ioBehavior);
 			}
 
-			// call .ContinueWith (as a separate method, so that the temporary class for the lambda is only allocated if necessary)
+			// call .Then (as a separate method, so that the temporary class for the lambda is only allocated if necessary)
 			return AddContinuation(readBytesTask, byteHandler, buffer, totalBytesToRead, ioBehavior);
 
-			ValueTask<ArraySegment<byte>> AddContinuation(ValueTask<int> readBytesTask_, IByteHandler byteHandler_, ArraySegment<byte> buffer_, int totalBytesToRead_, IOBehavior ioBehavior_) =>
-				readBytesTask_.ContinueWith(x => HasReadAllData(x, ref buffer_, totalBytesToRead_, out var result_) ? result_ : ReadBytesAsync(byteHandler_, buffer_, totalBytesToRead_, ioBehavior_));
+			ValueOrCallback<ArraySegment<byte>> AddContinuation(ValueOrCallback<int> readBytesTask_, IByteHandler byteHandler_, ArraySegment<byte> buffer_, int totalBytesToRead_, IOBehavior ioBehavior_) =>
+				readBytesTask_.Then(x => HasReadAllData(x, ref buffer_, totalBytesToRead_, out var result_) ? result_ : ReadBytesAsync(byteHandler_, buffer_, totalBytesToRead_, ioBehavior_));
 		}
 
 		/// <summary>
@@ -61,13 +60,13 @@ namespace MySql.Data.Protocol.Serialization
 		/// <param name="totalBytesToRead">The total number of bytes that need to be read.</param>
 		/// <param name="result">On success, a <see cref="ValueTask{ArraySegment{byte}}"/> representing all the data that was read.</param>
 		/// <returns><c>true</c> if all data has been read; otherwise, <c>false</c>.</returns>
-		private bool HasReadAllData(int readBytesCount, ref ArraySegment<byte> buffer, int totalBytesToRead, out ValueTask<ArraySegment<byte>> result)
+		private bool HasReadAllData(int readBytesCount, ref ArraySegment<byte> buffer, int totalBytesToRead, out ValueOrCallback<ArraySegment<byte>> result)
 		{
 			if (readBytesCount == 0)
 			{
 				var data = m_remainingData;
 				m_remainingData = default(ArraySegment<byte>);
-				result = new ValueTask<ArraySegment<byte>>(data);
+				result = new ValueOrCallback<ArraySegment<byte>>(data);
 				return true;
 			}
 
@@ -77,12 +76,12 @@ namespace MySql.Data.Protocol.Serialization
 				var bufferBytes = new ArraySegment<byte>(buffer.Array, 0, bufferSize);
 				var requestedBytes = bufferBytes.Slice(0, totalBytesToRead);
 				m_remainingData = bufferBytes.Slice(totalBytesToRead);
-				result = new ValueTask<ArraySegment<byte>>(requestedBytes);
+				result = new ValueOrCallback<ArraySegment<byte>>(requestedBytes);
 				return true;
 			}
 
 			buffer = new ArraySegment<byte>(buffer.Array, bufferSize, buffer.Array.Length - bufferSize);
-			result = default(ValueTask<ArraySegment<byte>>);
+			result = ValueOrCallback<ArraySegment<byte>>.Empty;
 			return false;
 		}
 

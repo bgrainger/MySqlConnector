@@ -27,7 +27,7 @@ namespace MySql.Data.Protocol.Serialization
 		/// <returns>An <see cref="ArraySegment{Byte}"/> containing the data that was read. This
 		/// <see cref="ArraySegment{Byte}"/> will be valid to read from until the next time <see cref="ReadPayloadAsync"/> or
 		/// <see cref="WritePayloadAsync"/> is called.</returns>
-		ValueTask<ArraySegment<byte>> ReadPayloadAsync(ArraySegmentHolder<byte> cache, ProtocolErrorBehavior protocolErrorBehavior, IOBehavior ioBehavior);
+		ValueOrCallback<ArraySegment<byte>> ReadPayloadAsync(ArraySegmentHolder<byte> cache, ProtocolErrorBehavior protocolErrorBehavior, IOBehavior ioBehavior);
 
 		/// <summary>
 		/// Writes a payload.
@@ -35,6 +35,6 @@ namespace MySql.Data.Protocol.Serialization
 		/// <param name="payload">The data to write.</param>
 		/// <param name="ioBehavior">The <see cref="IOBehavior"/> to use when writing.</param>
 		/// <returns>A <see cref="ValueTask{Int32}"/>. The value of this object is not defined.</returns>
-		ValueTask<int> WritePayloadAsync(ArraySegment<byte> payload, IOBehavior ioBehavior);
+		ValueOrCallback<int> WritePayloadAsync(ArraySegment<byte> payload, IOBehavior ioBehavior);
 	}
 }
