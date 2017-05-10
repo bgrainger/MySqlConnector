@@ -8,8 +8,9 @@ namespace MySql.Data.Protocol.Serialization
 		public SocketByteHandler(Socket socket)
 		{
 			m_socket = socket;
+			m_source = new ValueOrCallbackSource<int>();
 			m_socketAsyncEventArgs = new SocketAsyncEventArgs();
-			m_socketAsyncEventArgs.Completed += s_eventHandler;
+			m_socketAsyncEventArgs.Completed += (sender, args) => TransferStatus(args, m_source);
 		}
 
 		public ValueOrCallback<int> ReadBytesAsync(ArraySegment<byte> buffer, IOBehavior ioBehavior)
@@ -20,12 +21,11 @@ namespace MySql.Data.Protocol.Serialization
 
 		ValueOrCallback<int> DoReadBytesAsync(ArraySegment<byte> buffer_)
 		{
-			var source = new ValueOrCallbackSource<int>();
-			m_socketAsyncEventArgs.UserToken = source;
+			m_source.Reset();
 			m_socketAsyncEventArgs.SetBuffer(buffer_.Array, buffer_.Offset, buffer_.Count);
 			if (!m_socket.ReceiveAsync(m_socketAsyncEventArgs))
-				TransferStatus(m_socketAsyncEventArgs, source);
-			return source.ValueOrCallback;
+				TransferStatus(m_socketAsyncEventArgs, m_source);
+			return m_source.ValueOrCallback;
 		}
 
 		public ValueOrCallback<int> WriteBytesAsync(ArraySegment<byte> data, IOBehavior ioBehavior)
@@ -39,16 +39,12 @@ namespace MySql.Data.Protocol.Serialization
 
 		ValueOrCallback<int> DoWriteBytesAsync(ArraySegment<byte> data_)
 		{
-			var source = new ValueOrCallbackSource<int>();
-			m_socketAsyncEventArgs.UserToken = source;
+			m_source.Reset();
 			m_socketAsyncEventArgs.SetBuffer(data_.Array, data_.Offset, data_.Count);
 			if (!m_socket.SendAsync(m_socketAsyncEventArgs))
-				TransferStatus(m_socketAsyncEventArgs, source);
-			return source.ValueOrCallback;
+				TransferStatus(m_socketAsyncEventArgs, m_source);
+			return m_source.ValueOrCallback;
 		}
-
-		private static readonly EventHandler<SocketAsyncEventArgs> s_eventHandler = (sender, args) =>
-			TransferStatus(args, (ValueOrCallbackSource<int>) args.UserToken);
 
 		private static void TransferStatus(SocketAsyncEventArgs args, ValueOrCallbackSource<int> source)
 		{
@@ -60,5 +56,6 @@ namespace MySql.Data.Protocol.Serialization
 
 		readonly Socket m_socket;
 		readonly SocketAsyncEventArgs m_socketAsyncEventArgs;
+		readonly ValueOrCallbackSource<int> m_source;
 	}
 }

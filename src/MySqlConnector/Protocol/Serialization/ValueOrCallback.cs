@@ -6,6 +6,13 @@ namespace MySql.Data.Protocol.Serialization
 {
 	internal sealed class ValueOrCallbackSource<TResult>
 	{
+		public void Reset()
+		{
+			m_continuation = null;
+			m_result = default(TResult);
+			m_exception = null;
+		}
+
 		public ValueOrCallback<TResult> ValueOrCallback => Serialization.ValueOrCallback.FromSource(this);
 
 		public void SetResult(TResult result)
