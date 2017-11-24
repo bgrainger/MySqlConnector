@@ -3,6 +3,7 @@ using System.Data;
 using System.Data.Common;
 using System.Linq;
 using System.Threading.Tasks;
+using Dapper;
 using MySql.Data.MySqlClient;
 using Xunit;
 
@@ -425,6 +426,83 @@ namespace SideBySide
 			Assert.Equal(dataAccess, ((string) row["SQL_DATA_ACCESS"]).Replace('_', ' '));
 		}
 #endif
+
+		[Fact]
+		public void RowCountInTransaction()
+		{
+			m_database.Connection.Execute(@"
+DROP PROCEDURE IF EXISTS servicetickets_update;
+DROP TABLE IF EXISTS servicetickets_tracking;
+DROP TABLE IF EXISTS servicetickets;
+
+CREATE TABLE servicetickets
+(
+	ServiceTicketID VARCHAR(36) NOT NULL PRIMARY KEY,
+	Title LONGTEXT
+);
+
+CREATE TABLE servicetickets_tracking
+(
+	ServiceTicketID VARCHAR(36) NOT NULL PRIMARY KEY,
+	timestamp BIGINT
+);
+
+INSERT INTO servicetickets values('04d07d89-3f32-449e-8879-c017ef75d950', 'A');
+INSERT INTO servicetickets_tracking values('04d07d89-3f32-449e-8879-c017ef75d950', 0);
+
+CREATE PROCEDURE `servicetickets_update`(
+
+	inServiceTicketID VARCHAR(36),
+	inTitle LONGTEXT
+)
+BEGIN
+UPDATE `servicetickets`
+SET  `Title` = inTitle
+WHERE `ServiceTicketID` = inServiceTicketID;
+
+/* Since the update 'could' potentially returns 0 as row affected count when we make a double update with the same values, to be sure, make a fake update on metadatas time column */
+UPDATE `servicetickets_tracking` 
+SET `timestamp` = ROUND(UNIX_TIMESTAMP(CURTIME(4)) * 1000)
+WHERE `ServiceTicketID` = inServiceTicketID;
+
+END;");
+			for (int i = 0; i < 5; i++)
+			{
+				using (var connection = new MySqlConnection(AppConfig.ConnectionString))
+				{
+					connection.Open();
+
+					using (var t = connection.BeginTransaction(IsolationLevel.ReadCommitted))
+					{
+
+						string procName = "servicetickets_update";
+						using (var cmd = connection.CreateCommand())
+						{
+							cmd.CommandText = procName;
+							cmd.CommandType = CommandType.StoredProcedure;
+							cmd.Transaction = t;
+
+							MySqlParameter p = new MySqlParameter();
+							p.ParameterName = "inServiceTicketID";
+							p.MySqlDbType = MySqlDbType.Guid;
+							p.Value = new Guid("04d07d89-3f32-449e-8879-c017ef75d950");
+							cmd.Parameters.Add(p);
+
+							p = new MySqlParameter();
+							p.ParameterName = "inTitle";
+							p.MySqlDbType = MySqlDbType.String;
+							p.Value = "A";
+							cmd.Parameters.Add(p);
+
+							var rowCount = cmd.ExecuteNonQuery();
+							Assert.Equal(1, rowCount);
+
+							t.Commit();
+						}
+					}
+				}
+			}
+		}
 
 		private static string NormalizeSpaces(string input)
 		{
