@@ -179,11 +179,11 @@ namespace MySql.Data.MySqlClient
 
 		internal string NormalizedParameterName { get; private set; }
 
-		internal void AppendSqlString(BinaryWriter writer, StatementPreparerOptions options)
+		internal void AppendSqlString(StatementWriter writer, StatementPreparerOptions options)
 		{
 			if (Value == null || Value == DBNull.Value)
 			{
-				writer.WriteUtf8("NULL");
+				writer.Write(s_null);
 			}
 			else if (Value is string stringValue)
 			{
@@ -208,31 +208,42 @@ namespace MySql.Data.MySqlClient
 				}
 				writer.Write((byte) '\'');
 			}
-			else if (Value is byte || Value is sbyte || Value is short || Value is int || Value is long || Value is ushort || Value is uint || Value is ulong || Value is decimal)
+			else if (Value is int intValue)
+			{
+				writer.Write(intValue);
+			}
+			else if (Value is byte || Value is sbyte || Value is short || Value is long || Value is ushort || Value is uint || Value is ulong || Value is decimal)
 			{
 				writer.WriteUtf8("{0}".FormatInvariant(Value));
 			}
 			else if (Value is byte[] byteArrayValue)
 			{
 				// determine the number of bytes to be written
-				const string c_prefix = "_binary'";
-				var length = byteArrayValue.Length + c_prefix.Length + 1;
+				var length = byteArrayValue.Length + 9;
 				foreach (var by in byteArrayValue)
 				{
 					if (by == 0x27 || by == 0x5C)
 						length++;
 				}
 
-				((MemoryStream) writer.BaseStream).Capacity = (int) writer.BaseStream.Length + length;
-
-				writer.WriteUtf8(c_prefix);
+				var span = writer.GetWriteable(length);
+				span[0] = (byte) '_';
+				span[1] = (byte) 'b';
+				span[2] = (byte) 'i';
+				span[3] = (byte) 'n';
+				span[4] = (byte) 'a';
+				span[5] = (byte) 'r';
+				span[6] = (byte) 'y';
+				span[7] = (byte) '\'';
+				int index = 8;
 				foreach (var by in byteArrayValue)
 				{
 					if (by == 0x27 || by == 0x5C)
-						writer.Write((byte) 0x5C);
-					writer.Write(by);
+						span[index++] = 0x5C;
+					span[index++] = by;
 				}
-				writer.Write((byte) '\'');
+				span[index++] = (byte) '\'';
+				writer.FinishWriting(index);
 			}
 			else if (Value is bool boolValue)
 			{
@@ -326,6 +337,8 @@ namespace MySql.Data.MySqlClient
 
 			return name.StartsWith("@", StringComparison.Ordinal) || name.StartsWith("?", StringComparison.Ordinal) ? name.Substring(1) : name;
 		}
+
+		static readonly byte[] s_null = { (byte) 'N', (byte) 'U', (byte) 'L', (byte) 'L' };
 
 		DbType m_dbType;
 		MySqlDbType m_mySqlDbType;

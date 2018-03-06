@@ -62,32 +62,36 @@ namespace MySqlConnector.Core
 			cancellationToken.ThrowIfCancellationRequested();
 			if (Log.IsDebugEnabled())
 				Log.Debug("Session{0} Execute{1}: {2}", m_command.Connection.Session.Id, ioBehavior == IOBehavior.Asynchronous ? "Async" : "", commandText);
-			var payload = CreateQueryPayload(commandText, parameterCollection);
-			using (m_command.RegisterCancel(cancellationToken))
+			using (var writer = new StatementWriter())
 			{
-				m_command.Connection.Session.StartQuerying(m_command);
-				m_command.LastInsertedId = -1;
-				try
+				var payload = CreateQueryPayload(writer, commandText, parameterCollection);
+
+				using (m_command.RegisterCancel(cancellationToken))
 				{
-					await m_command.Connection.Session.SendAsync(payload, ioBehavior, CancellationToken.None).ConfigureAwait(false);
-					return await MySqlDataReader.CreateAsync(m_command, behavior, ioBehavior).ConfigureAwait(false);
-				}
-				catch (MySqlException ex) when (ex.Number == (int) MySqlErrorCode.QueryInterrupted && cancellationToken.IsCancellationRequested)
-				{
-					Log.Warn("Session{0} query was interrupted", m_command.Connection.Session.Id);
-					throw new OperationCanceledException(cancellationToken);
-				}
-				catch (Exception ex) when (payload.ArraySegment.Count > 4_194_304 && (ex is SocketException || ex is IOException || ex is MySqlProtocolException))
-				{
-					// the default MySQL Server value for max_allowed_packet (in MySQL 5.7) is 4MiB: https://dev.mysql.com/doc/refman/5.7/en/server-system-variables.html#sysvar_max_allowed_packet
-					// use "decimal megabytes" (to round up) when creating the exception message
-					int megabytes = payload.ArraySegment.Count / 1_000_000;
-					throw new MySqlException("Error submitting {0}MB packet; ensure 'max_allowed_packet' is greater than {0}MB.".FormatInvariant(megabytes), ex);
+					m_command.Connection.Session.StartQuerying(m_command);
+					m_command.LastInsertedId = -1;
+					try
+					{
+						await m_command.Connection.Session.SendAsync(payload, ioBehavior, CancellationToken.None).ConfigureAwait(false);
+						return await MySqlDataReader.CreateAsync(m_command, behavior, ioBehavior).ConfigureAwait(false);
+					}
+					catch (MySqlException ex) when (ex.Number == (int) MySqlErrorCode.QueryInterrupted && cancellationToken.IsCancellationRequested)
+					{
+						Log.Warn("Session{0} query was interrupted", m_command.Connection.Session.Id);
+						throw new OperationCanceledException(cancellationToken);
+					}
+					catch (Exception ex) when (payload.ArraySegment.Count > 4_194_304 && (ex is SocketException || ex is IOException || ex is MySqlProtocolException))
+					{
+						// the default MySQL Server value for max_allowed_packet (in MySQL 5.7) is 4MiB: https://dev.mysql.com/doc/refman/5.7/en/server-system-variables.html#sysvar_max_allowed_packet
+						// use "decimal megabytes" (to round up) when creating the exception message
+						int megabytes = payload.ArraySegment.Count / 1_000_000;
+						throw new MySqlException("Error submitting {0}MB packet; ensure 'max_allowed_packet' is greater than {0}MB.".FormatInvariant(megabytes), ex);
+					}
 				}
 			}
 		}
 
-		private PayloadData CreateQueryPayload(string commandText, MySqlParameterCollection parameterCollection)
+		private PayloadData CreateQueryPayload(StatementWriter writer, string commandText, MySqlParameterCollection parameterCollection)
 		{
 			var statementPreparerOptions = StatementPreparerOptions.None;
 			if (m_command.Connection.AllowUserVariables || m_command.CommandType == CommandType.StoredProcedure)
@@ -96,7 +100,7 @@ namespace MySqlConnector.Core
 				statementPreparerOptions |= StatementPreparerOptions.OldGuids;
 			if (m_command.CommandType == CommandType.StoredProcedure)
 				statementPreparerOptions |= StatementPreparerOptions.AllowOutputParameters;
-			var preparer = new StatementPreparer(commandText, parameterCollection, statementPreparerOptions);
+			var preparer = new StatementPreparer(writer, commandText, parameterCollection, statementPreparerOptions);
 			return new PayloadData(preparer.ParseAndBindParameters());
 		}
 

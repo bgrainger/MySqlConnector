@@ -44,7 +44,14 @@ namespace MySqlConnector.Tests
 			Assert.Equal(sql, GetParsedSql(sql));
 		}
 
-		private static string GetParsedSql(string input, MySqlParameterCollection parameters = null) =>
-			Encoding.UTF8.GetString(new StatementPreparer(input, parameters ?? new MySqlParameterCollection(), StatementPreparerOptions.None).ParseAndBindParameters().Slice(1));
+		private static string GetParsedSql(string input, MySqlParameterCollection parameters = null)
+		{
+			using (var writer = new StatementWriter())
+			{
+				var preparer = new StatementPreparer(writer, input, parameters ?? new MySqlParameterCollection(), StatementPreparerOptions.None);
+				var bytes = preparer.ParseAndBindParameters().Slice(1);
+				return Encoding.UTF8.GetString(bytes);
+			}
+		}
 	}
 }

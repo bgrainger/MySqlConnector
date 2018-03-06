@@ -9,6 +9,7 @@
     <AssemblyName>MySqlConnector</AssemblyName>
     <PackageId>MySqlConnector</PackageId>
     <PackageTags>mysql;mysqlconnector;async;ado.net;database;netcore</PackageTags>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'net45' OR '$(TargetFramework)' == 'net46' ">
