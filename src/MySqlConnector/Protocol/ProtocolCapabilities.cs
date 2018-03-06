@@ -126,5 +126,10 @@ namespace MySqlConnector.Protocol
 		/// Can send OK after a Text Resultset.
 		/// </summary>
 		DeprecateEof = 0x100_0000,
+
+		/// <summary>
+		/// The client can handle optional metadata information in the result set.
+		/// </summary>
+		OptionalResultSetMetadata = 0x200_0000,
 	}
 }

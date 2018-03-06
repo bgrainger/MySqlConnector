@@ -55,6 +55,7 @@ namespace MySqlConnector.Core
 		public IPAddress IPAddress => (m_tcpClient?.Client.RemoteEndPoint as IPEndPoint)?.Address;
 		public WeakReference<MySqlConnection> OwningConnection { get; set; }
 		public bool SupportsDeprecateEof => m_supportsDeprecateEof;
+		public bool SupportsOptionalResultSetMetadata => m_supportsOptionalResultSetMetadata;
 
 		public void ReturnToPool()
 		{
@@ -265,6 +266,7 @@ namespace MySqlConnector.Core
 
 				m_supportsConnectionAttributes = (initialHandshake.ProtocolCapabilities & ProtocolCapabilities.ConnectionAttributes) != 0;
 				m_supportsDeprecateEof = (initialHandshake.ProtocolCapabilities & ProtocolCapabilities.DeprecateEof) != 0;
+				m_supportsOptionalResultSetMetadata = (initialHandshake.ProtocolCapabilities & ProtocolCapabilities.OptionalResultSetMetadata) != 0;
 				var serverSupportsSsl = (initialHandshake.ProtocolCapabilities & ProtocolCapabilities.Ssl) != 0;
 
 				Log.Info("{0} made connection; ServerVersion={1}; ConnectionId={2}; Flags: {3}{4}{5}{6}", m_logArguments[0], ServerVersion.OriginalString, ConnectionId,
@@ -1170,5 +1172,6 @@ namespace MySqlConnector.Core
 		bool m_isSecureConnection;
 		bool m_supportsConnectionAttributes;
 		bool m_supportsDeprecateEof;
+		bool m_supportsOptionalResultSetMetadata;
 	}
 }

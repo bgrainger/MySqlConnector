@@ -24,6 +24,7 @@ namespace MySqlConnector.Protocol.Payloads
 				(serverCapabilities & ProtocolCapabilities.ConnectionAttributes) |
 				(serverCapabilities & ProtocolCapabilities.SessionTrack) |
 				(serverCapabilities & ProtocolCapabilities.DeprecateEof) |
+				(serverCapabilities & ProtocolCapabilities.OptionalResultSetMetadata) |
 				additionalCapabilities));
 			writer.WriteInt32(0x4000_0000);
 			writer.WriteByte((byte) CharacterSet.Utf8Mb4Binary);

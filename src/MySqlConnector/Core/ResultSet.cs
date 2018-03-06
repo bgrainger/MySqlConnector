@@ -92,37 +92,44 @@ namespace MySqlConnector.Core
 					{
 						var reader = new ByteArrayReader(payload.ArraySegment);
 						var columnCount = (int) reader.ReadLengthEncodedInteger();
+						var hasMetadata = true;
+						if (Session.SupportsOptionalResultSetMetadata)
+							hasMetadata = reader.ReadByte() == 1;
 						if (reader.BytesRemaining != 0)
 							throw new MySqlException("Unexpected data at end of column_count packet; see https://github.com/mysql-net/MySqlConnector/issues/324");
 
-						// reserve adequate space to hold a copy of all column definitions (but note that this can be resized below if we guess too small)
-						Array.Resize(ref m_columnDefinitionPayloads, columnCount * 96);
-
-						ColumnDefinitions = new ColumnDefinitionPayload[columnCount];
-						ColumnTypes = new MySqlDbType[columnCount];
 						m_dataOffsets = new int[columnCount];
 						m_dataLengths = new int[columnCount];
 
-						for (var column = 0; column < ColumnDefinitions.Length; column++)
+						if (hasMetadata)
 						{
-							payload = await Session.ReceiveReplyAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
-							var arraySegment = payload.ArraySegment;
+							// reserve adequate space to hold a copy of all column definitions (but note that this can be resized below if we guess too small)
+							Array.Resize(ref m_columnDefinitionPayloads, columnCount * 96);
 
-							// 'Session.ReceiveReplyAsync' reuses a shared buffer; make a copy so that the column definitions can always be safely read at any future point
-							if (m_columnDefinitionPayloadUsedBytes + arraySegment.Count > m_columnDefinitionPayloads.Length)
-								Array.Resize(ref m_columnDefinitionPayloads, Math.Max(m_columnDefinitionPayloadUsedBytes + arraySegment.Count, m_columnDefinitionPayloadUsedBytes * 2));
-							Buffer.BlockCopy(arraySegment.Array, arraySegment.Offset, m_columnDefinitionPayloads, m_columnDefinitionPayloadUsedBytes, arraySegment.Count);
+							ColumnDefinitions = new ColumnDefinitionPayload[columnCount];
+							ColumnTypes = new MySqlDbType[columnCount];
 
-							var columnDefinition = ColumnDefinitionPayload.Create(new ArraySegment<byte>(m_columnDefinitionPayloads, m_columnDefinitionPayloadUsedBytes, arraySegment.Count));
-							ColumnDefinitions[column] = columnDefinition;
-							ColumnTypes[column] = TypeMapper.ConvertToMySqlDbType(columnDefinition, treatTinyAsBoolean: Connection.TreatTinyAsBoolean, oldGuids: Connection.OldGuids);
-							m_columnDefinitionPayloadUsedBytes += arraySegment.Count;
-						}
+							for (var column = 0; column < ColumnDefinitions.Length; column++)
+							{
+								payload = await Session.ReceiveReplyAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
+								var arraySegment = payload.ArraySegment;
 
-						if (!Session.SupportsDeprecateEof)
-						{
-							payload = await Session.ReceiveReplyAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
-							EofPayload.Create(payload);
+								// 'Session.ReceiveReplyAsync' reuses a shared buffer; make a copy so that the column definitions can always be safely read at any future point
+								if (m_columnDefinitionPayloadUsedBytes + arraySegment.Count > m_columnDefinitionPayloads.Length)
+									Array.Resize(ref m_columnDefinitionPayloads, Math.Max(m_columnDefinitionPayloadUsedBytes + arraySegment.Count, m_columnDefinitionPayloadUsedBytes * 2));
+								Buffer.BlockCopy(arraySegment.Array, arraySegment.Offset, m_columnDefinitionPayloads, m_columnDefinitionPayloadUsedBytes, arraySegment.Count);
+
+								var columnDefinition = ColumnDefinitionPayload.Create(new ArraySegment<byte>(m_columnDefinitionPayloads, m_columnDefinitionPayloadUsedBytes, arraySegment.Count));
+								ColumnDefinitions[column] = columnDefinition;
+								ColumnTypes[column] = TypeMapper.ConvertToMySqlDbType(columnDefinition, treatTinyAsBoolean: Connection.TreatTinyAsBoolean, oldGuids: Connection.OldGuids);
+								m_columnDefinitionPayloadUsedBytes += arraySegment.Count;
+							}
+
+							if (!Session.SupportsDeprecateEof)
+							{
+								payload = await Session.ReceiveReplyAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
+								EofPayload.Create(payload);
+							}
 						}
 
 						LastInsertId = -1;
