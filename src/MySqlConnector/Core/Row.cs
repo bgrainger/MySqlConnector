@@ -171,6 +171,13 @@ namespace MySqlConnector.Core
 
 		public int GetInt32(int ordinal)
 		{
+			// HACK: copy/paste result parsing code for optional metadata
+			if (ResultSet.ColumnDefinitions == null)
+			{
+				var data = new ArraySegment<byte>(m_payload.Array, m_dataOffsets[ordinal], m_dataLengths[ordinal]);
+				return int.Parse(Encoding.UTF8.GetString(data), CultureInfo.InvariantCulture);
+			}
+
 			var value = GetValue(ordinal);
 			if (value is int)
 				return (int) value;
@@ -326,6 +333,8 @@ namespace MySqlConnector.Core
 
 		public object GetValue(int ordinal)
 		{
+			if (ResultSet.ColumnDefinitions == null)
+				throw new InvalidOperationException("Cannot call GetValue with optional result set metadata.");
 			if (ordinal < 0 || ordinal > ResultSet.ColumnDefinitions.Length)
 				throw new ArgumentOutOfRangeException(nameof(ordinal), "value must be between 0 and {0}.".FormatInvariant(ResultSet.ColumnDefinitions.Length));
 

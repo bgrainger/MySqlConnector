@@ -302,6 +302,14 @@ namespace MySqlConnector.Core
 
 				if (ShouldGetRealServerDetails())
 					await GetRealServerDetailsAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
+
+				// HACK: turn off all result set metadata on this connection
+				if (SupportsOptionalResultSetMetadata)
+				{ 
+					await SendAsync(QueryPayload.Create("SET @@resultset_metadata=NONE;"), ioBehavior, CancellationToken.None).ConfigureAwait(false);
+					payload = await ReceiveReplyAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
+					OkPayload.Create(payload);
+				}
 			}
 			catch (IOException ex)
 			{
