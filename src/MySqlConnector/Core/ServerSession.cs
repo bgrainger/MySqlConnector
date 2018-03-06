@@ -39,6 +39,8 @@ namespace MySqlConnector.Core
 			PoolGeneration = poolGeneration;
 			HostName = "";
 			m_logArguments = new object[] { "Session{0}".FormatInvariant(Id), null };
+			m_tryAsyncContinuationInt = TryAsyncContinuation;
+			m_tryAsyncContinuationBytes = TryAsyncContinuation;
 			Log.Debug("{0} created new session", m_logArguments);
 		}
 
@@ -575,7 +577,7 @@ namespace MySqlConnector.Core
 				return ValueTaskExtensions.FromException<PayloadData>(exception);
 			}
 
-			return new ValueTask<PayloadData>(task.AsTask().ContinueWith(TryAsyncContinuation, cancellationToken, TaskContinuationOptions.LazyCancellation | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default));
+			return new ValueTask<PayloadData>(task.AsTask().ContinueWith(m_tryAsyncContinuationBytes, cancellationToken, TaskContinuationOptions.LazyCancellation | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default));
 		}
 
 		// Continues a conversation with the server by sending a reply to a packet received with 'Receive' or 'ReceiveReply'.
@@ -597,7 +599,7 @@ namespace MySqlConnector.Core
 			if (task.IsCompletedSuccessfully)
 				return task;
 
-			return new ValueTask<int>(task.AsTask().ContinueWith(TryAsyncContinuation, cancellationToken, TaskContinuationOptions.LazyCancellation | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default));
+			return new ValueTask<int>(task.AsTask().ContinueWith(m_tryAsyncContinuationInt, cancellationToken, TaskContinuationOptions.LazyCancellation | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default));
 		}
 
 		internal void HandleTimeout()
@@ -1155,6 +1157,8 @@ namespace MySqlConnector.Core
 		readonly object m_lock;
 		readonly object[] m_logArguments;
 		readonly ArraySegmentHolder<byte> m_payloadCache;
+		readonly Func<Task<int>, int> m_tryAsyncContinuationInt;
+		readonly Func<Task<ArraySegment<byte>>, PayloadData> m_tryAsyncContinuationBytes;
 		State m_state;
 		TcpClient m_tcpClient;
 		Socket m_socket;
