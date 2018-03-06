@@ -1,4 +1,6 @@
+#define UTF8PARSER
 using System;
+using System.Buffers.Text;
 using System.Globalization;
 using System.Text;
 using MySql.Data.MySqlClient;
@@ -171,6 +173,23 @@ namespace MySqlConnector.Core
 
 		public int GetInt32(int ordinal)
 		{
+#if UTF8PARSER
+			if (m_dataOffsets[ordinal] == -1)
+				throw new InvalidCastException();
+			var columnDefinition = ResultSet.ColumnDefinitions[ordinal];
+			var columnType = columnDefinition.ColumnType;
+			if (columnType == ColumnType.Long || columnType == ColumnType.Longlong || columnType == ColumnType.Int24 ||
+			    columnType == ColumnType.Short || (columnType == ColumnType.Tiny && !(Connection.TreatTinyAsBoolean && columnDefinition.ColumnLength == 1)) ||
+			    columnType == ColumnType.Decimal || columnType == ColumnType.NewDecimal || columnType == ColumnType.Year)
+			{
+				var span = new ReadOnlySpan<byte>(m_payload.Array, m_dataOffsets[ordinal], m_dataLengths[ordinal]);
+				if (Utf8Parser.TryParse(span, out int value, out var bytesConsumed) && bytesConsumed == m_dataLengths[ordinal])
+					return value;
+				throw new FormatException();
+			}
+
+			throw new InvalidCastException();
+#else
 			var value = GetValue(ordinal);
 			if (value is int)
 				return (int) value;
@@ -192,6 +211,7 @@ namespace MySqlConnector.Core
 			if (value is decimal)
 				return (int) (decimal) value;
 			return (int) value;
+#endif
 		}
 
 		public long GetInt64(int ordinal)

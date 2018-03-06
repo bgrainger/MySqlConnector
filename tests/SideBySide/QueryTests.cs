@@ -609,7 +609,7 @@ insert into query_null_parameter (id, value) VALUES (1, 'one'), (2, 'two'), (3, 
 				{
 					Assert.True(reader.Read());
 					Assert.Equal(4294967296m, reader.GetValue(0));
-					Assert.Throws<OverflowException>(() => reader.GetInt32(0));
+					Assert.Throws<FormatException>(() => reader.GetInt32(0));
 					Assert.Equal(4294967296L, reader.GetInt64(0));
 				}
 			}

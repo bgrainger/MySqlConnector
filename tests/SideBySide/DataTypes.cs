@@ -169,8 +169,17 @@ namespace SideBySide
 							break;
 
 						case 2: // overflow
-							Assert.Throws<OverflowException>(() => getInt(reader, 0));
-							Assert.Throws<OverflowException>(() => getIntByName(reader, column));
+							if (typeof(T) == typeof(int))
+							{
+								// Utf8Parser code doesn't distinguish between Overflow and FormatException
+								Assert.Throws<FormatException>(() => getInt(reader, 0));
+								Assert.Throws<FormatException>(() => getIntByName(reader, column));
+							}
+							else
+							{
+								Assert.Throws<OverflowException>(() => getInt(reader, 0));
+								Assert.Throws<OverflowException>(() => getIntByName(reader, column));
+							}
 							break;
 						}
 					}
