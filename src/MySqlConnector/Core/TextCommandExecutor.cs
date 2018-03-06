@@ -65,6 +65,7 @@ namespace MySqlConnector.Core
 			using (var writer = new StatementWriter())
 			{
 				var payload = CreateQueryPayload(writer, commandText, parameterCollection);
+				Thread.Sleep(1);
 
 				using (m_command.RegisterCancel(cancellationToken))
 				{
