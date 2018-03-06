@@ -532,18 +532,16 @@ namespace MySqlConnector.Protocol.Serialization
 			if (task.IsCompletedSuccessfully)
 			{
 				ArrayPool<byte>.Shared.Return(buffer);
-				return default(ValueTask<int>);
+				return default;
 			}
-			return AddContinuation(task, buffer);
+			return WritePacketAsyncAwaited(task, buffer);
 
 			// NOTE: use a local function (with no captures) to defer creation of lambda objects
-			ValueTask<int> AddContinuation(ValueTask<int> task_, byte[] buffer_)
+			async ValueTask<int> WritePacketAsyncAwaited(ValueTask<int> task_, byte[] buffer_)
 			{
-				return task_.ContinueWith(x =>
-				{
-					ArrayPool<byte>.Shared.Return(buffer_);
-					return default(ValueTask<int>);
-				});
+				await task_.ConfigureAwait(false);
+				ArrayPool<byte>.Shared.Return(buffer_);
+				return 0;
 			}
 		}
 
