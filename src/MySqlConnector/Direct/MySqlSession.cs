@@ -168,7 +168,7 @@ namespace MySqlConnector.Direct
 			var array = packet.Array;
 			var length = array[packet.Offset + 0] + (array[packet.Offset + 1] * 256) + (array[packet.Offset + 2] * 65536);
 			if (packet.Count < length + 4)
-				throw new InvalidOperationException("expected whole packet to be read at once");
+				throw new InvalidOperationException($"expected whole packet to be read at once: expecting {length}; got {packet.Count - 4}");
 			return new PayloadData(packet.Slice(4, length));
 		}
 	}

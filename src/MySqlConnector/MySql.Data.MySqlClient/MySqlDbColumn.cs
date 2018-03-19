@@ -5,7 +5,7 @@ using MySqlConnector.Protocol;
 using MySqlConnector.Protocol.Payloads;
 using MySqlConnector.Protocol.Serialization;
 
-#if !NETSTANDARD1_3 && !NETSTANDARD2_0
+#if !NETSTANDARD1_3 && !NETSTANDARD2_0 && !NETCOREAPP2_1
 namespace System.Data.Common
 {
 	public abstract class DbColumn
