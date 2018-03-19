@@ -8,7 +8,6 @@ using MySqlConnector.Core;
 using MySqlConnector.Protocol;
 using MySqlConnector.Protocol.Payloads;
 using MySqlConnector.Protocol.Serialization;
-using MySqlConnector.Utilities;
 
 namespace MySqlConnector.Direct
 {
@@ -77,6 +76,87 @@ namespace MySqlConnector.Direct
 			return payload.HeaderByte == 0;
 		}
 
+		public async ValueTask<int> PrepareAsync(string sql)
+		{
+			var length = Encoding.UTF8.GetBytes(sql, 0, sql.Length, m_buffer, 5) + 1;
+			m_buffer[0] = (byte) length;
+			m_buffer[1] = (byte) (length >> 8);
+			m_buffer[2] = (byte) (length >> 16);
+			m_buffer[3] = 0;
+			m_buffer[4] = (byte) CommandKind.StatementPrepare;
+			await m_byteHandler.WriteBytesAsync(new ArraySegment<byte>(m_buffer, 0, length + 4), IOBehavior.Asynchronous).ConfigureAwait(false);
+
+			var bytesRead = await m_byteHandler.ReadBytesAsync(new ArraySegment<byte>(m_buffer), IOBehavior.Asynchronous).ConfigureAwait(false);
+			m_remainingData = new ArraySegment<byte>(m_buffer, 0, bytesRead);
+			var payload = GetPayload(m_remainingData);
+			m_remainingData = m_remainingData.Slice(payload.ArraySegment.Count + 4);
+
+			var byteArrayReader = new ByteArrayReader(payload.ArraySegment);
+			byteArrayReader.ReadByte(0);
+			var statementId = byteArrayReader.ReadInt32();
+			var columnCount = byteArrayReader.ReadInt16();
+			var parameterCount  = byteArrayReader.ReadInt16();
+			if (parameterCount != 0)
+				throw new NotSupportedException("Prepared statements with parameters are not supported");
+			Array.Resize(ref m_columns, columnCount);
+			for (int i = 0; i < m_columns.Length; i++)
+			{
+				payload = GetPayload(m_remainingData);
+				m_remainingData = m_remainingData.Slice(payload.ArraySegment.Count + 4);
+				var columnDefinition = ColumnDefinitionPayload.Create(payload.ArraySegment);
+				m_columns[i] = new MySqlColumn(columnDefinition.Name, TypeMapper.ConvertToMySqlDbType(columnDefinition, true, false));
+			}
+
+			return statementId;
+		}
+
+		public async ValueTask<MySqlColumn[]> ExecuteAsync(int statementId)
+		{
+			var length = 10;
+			m_buffer[0] = (byte) length;
+			m_buffer[1] = (byte) (length >> 8);
+			m_buffer[2] = (byte) (length >> 16);
+			m_buffer[3] = 0;
+			m_buffer[4] = (byte) CommandKind.StatementExecute;
+			m_buffer[5] = (byte) (statementId & 0xFF);
+			m_buffer[6] = (byte) ((statementId >> 8) & 0xFF);
+			m_buffer[7] = (byte) ((statementId >> 16) & 0xFF);
+			m_buffer[8] = (byte) ((statementId >> 24) & 0xFF);
+			m_buffer[9] = 0;
+			m_buffer[10] = 1;
+			m_buffer[11] = 0;
+			m_buffer[12] = 0;
+			m_buffer[13] = 0;
+			await m_byteHandler.WriteBytesAsync(new ArraySegment<byte>(m_buffer, 0, length + 4), IOBehavior.Asynchronous).ConfigureAwait(false);
+
+			var bytesRead = await m_byteHandler.ReadBytesAsync(new ArraySegment<byte>(m_buffer), IOBehavior.Asynchronous).ConfigureAwait(false);
+			m_remainingData = new ArraySegment<byte>(m_buffer, 0, bytesRead);
+			var payload = GetPayload(m_remainingData);
+			m_remainingData = m_remainingData.Slice(payload.ArraySegment.Count + 4);
+
+			switch (payload.HeaderByte)
+			{
+			case 0:
+				return new MySqlColumn[0];
+			case 0xFB:
+				throw new NotSupportedException("LOAD DATA LOCAL INFILE not supported.");
+			case 0xFF:
+				throw ErrorPayload.Create(payload).ToException();
+			}
+
+			var byteArrayReader = new ByteArrayReader(payload.ArraySegment);
+			Array.Resize(ref m_columns, (int) byteArrayReader.ReadLengthEncodedInteger());
+			for (int i = 0; i < m_columns.Length; i++)
+			{
+				payload = GetPayload(m_remainingData);
+				m_remainingData = m_remainingData.Slice(payload.ArraySegment.Count + 4);
+				var columnDefinition = ColumnDefinitionPayload.Create(payload.ArraySegment);
+				m_columns[i] = new MySqlColumn(columnDefinition.Name, TypeMapper.ConvertToMySqlDbType(columnDefinition, true, false));
+			}
+
+			return m_columns;
+		}
+
 		public async ValueTask<MySqlColumn[]> ExecuteAsync(string sql)
 		{
 			var length = Encoding.UTF8.GetBytes(sql, 0, sql.Length, m_buffer, 5) + 1;
@@ -125,6 +205,18 @@ namespace MySqlConnector.Direct
 			return new ValueTask<bool>(true);
 		}
 
+		public ValueTask<bool> ReadBinaryAsync()
+		{
+			var payload = GetPayload(m_remainingData);
+			m_remainingData = m_remainingData.Slice(payload.ArraySegment.Count + 4);
+			if (payload.HeaderByte == 0xFE && OkPayload.IsOk(payload, true))
+				return new ValueTask<bool>(false);
+			m_rowReader = new ByteArrayReader(payload.ArraySegment);
+			m_rowReader.ReadByte(0); // header
+			m_rowReader.ReadByte(0); // NULL bitmap
+			return new ValueTask<bool>(true);
+		}
+
 		public int ReadInt32()
 		{
 			var columnLength = (int) m_rowReader.ReadLengthEncodedInteger(); // ASSUME: not DBNull
@@ -132,6 +224,11 @@ namespace MySqlConnector.Direct
 				throw new FormatException("Couldn't parse as int");
 			m_rowReader.ReadByteArraySegment(columnLength);
 			return value;
+		}
+
+		public int ReadInt32Binary()
+		{
+			return m_rowReader.ReadInt32();
 		}
 
 		public string ReadString()
