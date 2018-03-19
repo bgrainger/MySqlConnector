@@ -70,7 +70,7 @@ namespace MySqlConnector.Core
 						}
 						else
 						{
-							reuseSession = await session.TryPingAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
+							reuseSession = true;
 						}
 					}
 
