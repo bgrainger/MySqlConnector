@@ -34,11 +34,12 @@ namespace MySqlConnector.Core
 
 			ServerSession session;
 
-			var start = Thread.CurrentThread.ManagedThreadId % m_sessions.Length;
+			var start = Thread.CurrentThread.ManagedThreadId;
 			for (var i = 0; i < m_sessions.Length; i++)
 			{
-				session = m_sessions[(i + start) % m_sessions.Length];
-				if (session != null && Interlocked.CompareExchange(ref m_sessions[i], null, session) == session)
+				var j = (i + start) % m_sessions.Length;
+				session = m_sessions[j];
+				if (session != null && Interlocked.CompareExchange(ref m_sessions[j], null, session) == session)
 				{
 					Log.Debug("{0} found an existing session; checking it for validity", m_logArguments);
 					bool reuseSession;
@@ -112,9 +113,11 @@ namespace MySqlConnector.Core
 			session.OwningConnection = null;
 			if (SessionIsHealthy(session))
 			{
+				var start = Thread.CurrentThread.ManagedThreadId;
 				for (var i = 0; i < m_sessions.Length; i++)
 				{
-					if (Interlocked.CompareExchange(ref m_sessions[i], session, null) == null)
+					var j = (i + start) % m_sessions.Length;
+					if (m_sessions[j] == null && Interlocked.CompareExchange(ref m_sessions[j], session, null) == null)
 					{
 						return;
 					}
