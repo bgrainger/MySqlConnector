@@ -55,6 +55,10 @@ namespace MySqlConnector.Core
 						{
 							reuseSession = await session.TryResetConnectionAsync(ConnectionSettings, ioBehavior, cancellationToken).ConfigureAwait(false);
 						}
+						else if (unchecked((uint) Environment.TickCount) - session.LastReturned > 5000)
+						{
+							reuseSession = await session.TryPingAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
+						}
 						else
 						{
 							reuseSession = true;
