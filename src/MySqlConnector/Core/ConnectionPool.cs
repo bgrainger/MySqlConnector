@@ -34,9 +34,10 @@ namespace MySqlConnector.Core
 
 			ServerSession session;
 
+			var start = Thread.CurrentThread.ManagedThreadId % m_sessions.Length;
 			for (var i = 0; i < m_sessions.Length; i++)
 			{
-				session = m_sessions[i];
+				session = m_sessions[(i + start) % m_sessions.Length];
 				if (session != null && Interlocked.CompareExchange(ref m_sessions[i], null, session) == session)
 				{
 					Log.Debug("{0} found an existing session; checking it for validity", m_logArguments);
