@@ -34,7 +34,7 @@ namespace MySqlConnector.Core
 			m_lock = new object();
 			m_payloadCache = new ArraySegmentHolder<byte>();
 			Id = (pool?.Id ?? 0) + "." + id;
-			CreatedUtc = DateTime.UtcNow;
+			CreatedTime = unchecked((uint) Environment.TickCount);
 			Pool = pool;
 			PoolGeneration = poolGeneration;
 			HostName = "";
@@ -46,10 +46,10 @@ namespace MySqlConnector.Core
 		public ServerVersion ServerVersion { get; set; }
 		public int ConnectionId { get; set; }
 		public byte[] AuthPluginData { get; set; }
-		public DateTime CreatedUtc { get; }
+		public uint CreatedTime { get; }
 		public ConnectionPool Pool { get; }
 		public int PoolGeneration { get; }
-		public uint LastReturned { get; private set; }
+		public uint LastReturnedTime { get; private set; }
 		public string DatabaseOverride { get; set; }
 		public string HostName { get; private set; }
 		public IPAddress IPAddress => (m_tcpClient?.Client.RemoteEndPoint as IPEndPoint)?.Address;
@@ -63,7 +63,7 @@ namespace MySqlConnector.Core
 				m_logArguments[1] = Pool?.Id;
 				Log.Debug("{0} returning to Pool{1}", m_logArguments);
 			}
-			LastReturned = (uint) Environment.TickCount;
+			LastReturnedTime = unchecked((uint) Environment.TickCount);
 			Pool?.Return(this);
 		}
 

@@ -55,7 +55,7 @@ namespace MySqlConnector.Core
 						{
 							reuseSession = await session.TryResetConnectionAsync(ConnectionSettings, ioBehavior, cancellationToken).ConfigureAwait(false);
 						}
-						else if (unchecked((uint) Environment.TickCount) - session.LastReturned > 5000)
+						else if (unchecked((uint) Environment.TickCount) - session.LastReturnedTime > 30000)
 						{
 							reuseSession = await session.TryPingAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 						}
@@ -102,7 +102,7 @@ namespace MySqlConnector.Core
 			if (session.DatabaseOverride != null)
 				return false;
 			if (ConnectionSettings.ConnectionLifeTime > 0
-				&& (DateTime.UtcNow - session.CreatedUtc).TotalSeconds >= ConnectionSettings.ConnectionLifeTime)
+				&& (unchecked((uint) Environment.TickCount) - session.CreatedTime) / 1000 >= ConnectionSettings.ConnectionLifeTime)
 				return false;
 
 			return true;
