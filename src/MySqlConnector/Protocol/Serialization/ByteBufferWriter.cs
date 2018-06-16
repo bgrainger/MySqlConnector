@@ -148,7 +148,7 @@ namespace MySqlConnector.Protocol.Serialization
 				m_encoder = Encoding.UTF8.GetEncoder();
 			while (chars.Length > 0)
 			{
-				if (m_output.Length == 0)
+				if (m_output.Length < 4)
 					Reallocate();
 				m_encoder.Convert(chars, m_output.Span, true, out var charsUsed, out var bytesUsed, out var completed);
 				chars = chars.Slice(charsUsed);
