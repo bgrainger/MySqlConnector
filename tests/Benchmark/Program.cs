@@ -28,7 +28,7 @@ namespace Benchmark
 				.With(Job.Default.With(Runtime.Core).With(CsProjCoreToolchain.NetCoreApp21).WithId("netcore21"))
 				.With(DefaultExporters.Csv);
 
-			var summary = BenchmarkRunner.Run<MySqlClient>(customConfig);
+			var summary = BenchmarkRunner.Run<ReadonlyStruct>(customConfig);
 			Console.WriteLine(summary);
 		}
 	}
