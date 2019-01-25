@@ -203,11 +203,11 @@ namespace MySqlConnector.Core
 			{
 				var payloadValueTask = Session.ReceiveReplyAsync(ioBehavior, CancellationToken.None);
 				return payloadValueTask.IsCompletedSuccessfully
-					? new ValueTask<Row>(ScanRowAsyncRemainder(payloadValueTask.Result, row))
-					: new ValueTask<Row>(ScanRowAsyncAwaited(payloadValueTask.AsTask(), row, cancellationToken));
+					? new ValueTask<Row>(ScanRowAsyncRemainder(this, payloadValueTask.Result, row))
+					: new ValueTask<Row>(ScanRowAsyncAwaited(this, payloadValueTask.AsTask(), row, cancellationToken));
 			}
 
-			async Task<Row> ScanRowAsyncAwaited(Task<PayloadData> payloadTask, Row row_, CancellationToken token)
+			static async Task<Row> ScanRowAsyncAwaited(ResultSet this_, Task<PayloadData> payloadTask, Row row_, CancellationToken token)
 			{
 				PayloadData payloadData;
 				try
@@ -216,41 +216,41 @@ namespace MySqlConnector.Core
 				}
 				catch (MySqlException ex)
 				{
-					BufferState = State = ResultSetState.NoMoreData;
+					this_.BufferState = this_.State = ResultSetState.NoMoreData;
 					if (ex.Number == (int) MySqlErrorCode.QueryInterrupted)
 						token.ThrowIfCancellationRequested();
 					throw;
 				}
-				return ScanRowAsyncRemainder(payloadData, row_);
+				return ScanRowAsyncRemainder(this_, payloadData, row_);
 			}
 
-			Row ScanRowAsyncRemainder(PayloadData payload, Row row_)
+			static Row ScanRowAsyncRemainder(ResultSet this_, PayloadData payload, Row row_)
 			{
 				if (payload.HeaderByte == EofPayload.Signature)
 				{
 					var span = payload.AsSpan();
-					if (Session.SupportsDeprecateEof && OkPayload.IsOk(span, Session.SupportsDeprecateEof))
+					if (this_.Session.SupportsDeprecateEof && OkPayload.IsOk(span, this_.Session.SupportsDeprecateEof))
 					{
-						var ok = OkPayload.Create(span, Session.SupportsDeprecateEof, Session.SupportsSessionTrack);
-						BufferState = (ok.ServerStatus & ServerStatus.MoreResultsExist) == 0 ? ResultSetState.NoMoreData : ResultSetState.HasMoreData;
-						m_rowBuffered = null;
+						var ok = OkPayload.Create(span, this_.Session.SupportsDeprecateEof, this_.Session.SupportsSessionTrack);
+						this_.BufferState = (ok.ServerStatus & ServerStatus.MoreResultsExist) == 0 ? ResultSetState.NoMoreData : ResultSetState.HasMoreData;
+						this_.m_rowBuffered = null;
 						return null;
 					}
-					if (!Session.SupportsDeprecateEof && EofPayload.IsEof(payload))
+					if (!this_.Session.SupportsDeprecateEof && EofPayload.IsEof(payload))
 					{
 						var eof = EofPayload.Create(span);
-						BufferState = (eof.ServerStatus & ServerStatus.MoreResultsExist) == 0 ? ResultSetState.NoMoreData : ResultSetState.HasMoreData;
-						m_rowBuffered = null;
+						this_.BufferState = (eof.ServerStatus & ServerStatus.MoreResultsExist) == 0 ? ResultSetState.NoMoreData : ResultSetState.HasMoreData;
+						this_.m_rowBuffered = null;
 						return null;
 					}
 				}
 
 				if (row_ == null)
-					row_ = DataReader.ResultSetProtocol == ResultSetProtocol.Binary ? (Row) new BinaryRow(this) : new TextRow(this);
+					row_ = this_.DataReader.ResultSetProtocol == ResultSetProtocol.Binary ? (Row) new BinaryRow(this_) : new TextRow(this_);
 				row_.SetData(payload.ArraySegment);
-				m_rowBuffered = row_;
-				m_hasRows = true;
-				BufferState = ResultSetState.ReadingRows;
+				this_.m_rowBuffered = row_;
+				this_.m_hasRows = true;
+				this_.BufferState = ResultSetState.ReadingRows;
 				return row_;
 			}
 		}
