@@ -1152,7 +1152,7 @@ namespace MySqlConnector.Core
 
 				// first (and only) row
 				payload = await ReceiveReplyAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
-				void ReadRow(ReadOnlySpan<byte> span, out int? connectionId_, out string serverVersion_)
+				static void ReadRow(ReadOnlySpan<byte> span, out int? connectionId_, out string serverVersion_)
 				{
 					var reader = new ByteArrayReader(span);
 					var length = reader.ReadLengthEncodedIntegerOrNull();

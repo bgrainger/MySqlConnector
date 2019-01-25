@@ -406,8 +406,7 @@ namespace MySqlConnector.Protocol.Serialization
 				return ReadPacketAfterHeader(headerBytesTask.Result, bufferedByteReader, byteHandler, getNextSequenceNumber, protocolErrorBehavior, ioBehavior);
 			return AddContinuation(headerBytesTask, bufferedByteReader, byteHandler, getNextSequenceNumber, protocolErrorBehavior, ioBehavior);
 
-			// NOTE: use a local function (with no captures) to defer creation of lambda objects
-			ValueTask<Packet> AddContinuation(ValueTask<ArraySegment<byte>> headerBytes_, BufferedByteReader bufferedByteReader_, IByteHandler byteHandler_, Func<int> getNextSequenceNumber_, ProtocolErrorBehavior protocolErrorBehavior_, IOBehavior ioBehavior_) =>
+			static ValueTask<Packet> AddContinuation(ValueTask<ArraySegment<byte>> headerBytes_, BufferedByteReader bufferedByteReader_, IByteHandler byteHandler_, Func<int> getNextSequenceNumber_, ProtocolErrorBehavior protocolErrorBehavior_, IOBehavior ioBehavior_) =>
 				headerBytes_.ContinueWith(x => ReadPacketAfterHeader(x, bufferedByteReader_, byteHandler_, getNextSequenceNumber_, protocolErrorBehavior_, ioBehavior_));
 		}
 
@@ -438,8 +437,7 @@ namespace MySqlConnector.Protocol.Serialization
 				return CreatePacketFromPayload(payloadBytesTask.Result, payloadLength, protocolErrorBehavior);
 			return AddContinuation(payloadBytesTask, payloadLength, protocolErrorBehavior);
 
-			// NOTE: use a local function (with no captures) to defer creation of lambda objects
-			ValueTask<Packet> AddContinuation(ValueTask<ArraySegment<byte>> payloadBytesTask_, int payloadLength_, ProtocolErrorBehavior protocolErrorBehavior_)
+			static ValueTask<Packet> AddContinuation(ValueTask<ArraySegment<byte>> payloadBytesTask_, int payloadLength_, ProtocolErrorBehavior protocolErrorBehavior_)
 				=> payloadBytesTask_.ContinueWith(x => CreatePacketFromPayload(x, payloadLength_, protocolErrorBehavior_));
 		}
 
@@ -467,8 +465,7 @@ namespace MySqlConnector.Protocol.Serialization
 
 			return AddContinuation(readPacketTask, bufferedByteReader, byteHandler, getNextSequenceNumber, previousPayloads, protocolErrorBehavior, ioBehavior);
 
-			// NOTE: use a local function (with no captures) to defer creation of lambda objects
-			ValueTask<ArraySegment<byte>> AddContinuation(ValueTask<Packet> readPacketTask_, BufferedByteReader bufferedByteReader_, IByteHandler byteHandler_, Func<int> getNextSequenceNumber_, ArraySegmentHolder<byte> previousPayloads_, ProtocolErrorBehavior protocolErrorBehavior_, IOBehavior ioBehavior_)
+			static ValueTask<ArraySegment<byte>> AddContinuation(ValueTask<Packet> readPacketTask_, BufferedByteReader bufferedByteReader_, IByteHandler byteHandler_, Func<int> getNextSequenceNumber_, ArraySegmentHolder<byte> previousPayloads_, ProtocolErrorBehavior protocolErrorBehavior_, IOBehavior ioBehavior_)
 			{
 				return readPacketTask_.ContinueWith(packet =>
 					HasReadPayload(previousPayloads_, packet, protocolErrorBehavior_, out var result_) ? result_ :
@@ -508,8 +505,7 @@ namespace MySqlConnector.Protocol.Serialization
 			return payload.Count <= MaxPacketSize ? WritePacketAsync(byteHandler, getNextSequenceNumber(), payload, ioBehavior) :
 				CreateTask(byteHandler, getNextSequenceNumber, payload, ioBehavior);
 
-			// NOTE: use a local function (with no captures) to defer creation of lambda objects
-			ValueTask<int> CreateTask(IByteHandler byteHandler_, Func<int> getNextSequenceNumber_, ArraySegment<byte> payload_, IOBehavior ioBehavior_)
+			static ValueTask<int> CreateTask(IByteHandler byteHandler_, Func<int> getNextSequenceNumber_, ArraySegment<byte> payload_, IOBehavior ioBehavior_)
 			{
 				var writeTask = default(ValueTask<int>);
 				for (var bytesSent = 0; bytesSent < payload_.Count; bytesSent += MaxPacketSize)
@@ -536,8 +532,7 @@ namespace MySqlConnector.Protocol.Serialization
 			}
 			return AddContinuation(task, buffer);
 
-			// NOTE: use a local function (with no captures) to defer creation of lambda objects
-			ValueTask<int> AddContinuation(ValueTask<int> task_, byte[] buffer_)
+			static ValueTask<int> AddContinuation(ValueTask<int> task_, byte[] buffer_)
 			{
 				return task_.ContinueWith(x =>
 				{
