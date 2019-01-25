@@ -25,64 +25,64 @@ namespace MySqlConnector.Protocol.Serialization
 		{
 			return ioBehavior == IOBehavior.Asynchronous ?
 				new ValueTask<int>(DoReadBytesAsync(buffer)) : DoReadBytesSync(buffer);
+		}
 
-			ValueTask<int> DoReadBytesSync(ArraySegment<byte> buffer_)
+		private ValueTask<int> DoReadBytesSync(ArraySegment<byte> buffer)
+		{
+			try
 			{
-				try
-				{
-					if (RemainingTimeout == Constants.InfiniteTimeout)
-						return new ValueTask<int>(m_socket.Receive(buffer_.Array, buffer_.Offset, buffer_.Count, SocketFlags.None));
+				if (RemainingTimeout == Constants.InfiniteTimeout)
+					return new ValueTask<int>(m_socket.Receive(buffer.Array, buffer.Offset, buffer.Count, SocketFlags.None));
 
-					while (RemainingTimeout > 0)
-					{
-						var startTime = Environment.TickCount;
-						if (m_socket.Poll(Math.Min(int.MaxValue / 1000, RemainingTimeout) * 1000, SelectMode.SelectRead))
-						{
-							var bytesRead = m_socket.Receive(buffer_.Array, buffer_.Offset, buffer_.Count, SocketFlags.None);
-							RemainingTimeout -= unchecked(Environment.TickCount - startTime);
-							return new ValueTask<int>(bytesRead);
-						}
-						RemainingTimeout -= unchecked(Environment.TickCount - startTime);
-					}
-					return ValueTaskExtensions.FromException<int>(MySqlException.CreateForTimeout());
-				}
-				catch (Exception ex)
+				while (RemainingTimeout > 0)
 				{
-					return ValueTaskExtensions.FromException<int>(ex);
+					var startTime = Environment.TickCount;
+					if (m_socket.Poll(Math.Min(int.MaxValue / 1000, RemainingTimeout) * 1000, SelectMode.SelectRead))
+					{
+						var bytesRead = m_socket.Receive(buffer.Array, buffer.Offset, buffer.Count, SocketFlags.None);
+						RemainingTimeout -= unchecked(Environment.TickCount - startTime);
+						return new ValueTask<int>(bytesRead);
+					}
+					RemainingTimeout -= unchecked(Environment.TickCount - startTime);
 				}
+				return ValueTaskExtensions.FromException<int>(MySqlException.CreateForTimeout());
 			}
-
-			async Task<int> DoReadBytesAsync(ArraySegment<byte> buffer_)
+			catch (Exception ex)
 			{
-				var startTime = RemainingTimeout == Constants.InfiniteTimeout ? 0 : Environment.TickCount;
-				var timerId = RemainingTimeout == Constants.InfiniteTimeout ? 0 :
-					RemainingTimeout <= 0 ? throw MySqlException.CreateForTimeout() :
-					TimerQueue.Instance.Add(RemainingTimeout, m_closeSocket);
-				m_socketAwaitable.EventArgs.SetBuffer(buffer_.Array, buffer_.Offset, buffer_.Count);
-				int bytesRead;
-				try
-				{
-					await m_socket.ReceiveAsync(m_socketAwaitable);
-					bytesRead =  m_socketAwaitable.EventArgs.BytesTransferred;
-				}
-				catch (SocketException ex)
-				{
-					if (RemainingTimeout != Constants.InfiniteTimeout)
-					{
-						RemainingTimeout -= unchecked(Environment.TickCount - startTime);
-						if (!TimerQueue.Instance.Remove(timerId))
-							throw MySqlException.CreateForTimeout(ex);
-					}
-					throw;
-				}
+				return ValueTaskExtensions.FromException<int>(ex);
+			}
+		}
+
+		private async Task<int> DoReadBytesAsync(ArraySegment<byte> buffer)
+		{
+			var startTime = RemainingTimeout == Constants.InfiniteTimeout ? 0 : Environment.TickCount;
+			var timerId = RemainingTimeout == Constants.InfiniteTimeout ? 0 :
+				RemainingTimeout <= 0 ? throw MySqlException.CreateForTimeout() :
+				TimerQueue.Instance.Add(RemainingTimeout, m_closeSocket);
+			m_socketAwaitable.EventArgs.SetBuffer(buffer.Array, buffer.Offset, buffer.Count);
+			int bytesRead;
+			try
+			{
+				await m_socket.ReceiveAsync(m_socketAwaitable);
+				bytesRead =  m_socketAwaitable.EventArgs.BytesTransferred;
+			}
+			catch (SocketException ex)
+			{
 				if (RemainingTimeout != Constants.InfiniteTimeout)
 				{
 					RemainingTimeout -= unchecked(Environment.TickCount - startTime);
 					if (!TimerQueue.Instance.Remove(timerId))
-						throw MySqlException.CreateForTimeout();
+						throw MySqlException.CreateForTimeout(ex);
 				}
-				return bytesRead;
+				throw;
 			}
+			if (RemainingTimeout != Constants.InfiniteTimeout)
+			{
+				RemainingTimeout -= unchecked(Environment.TickCount - startTime);
+				if (!TimerQueue.Instance.Remove(timerId))
+					throw MySqlException.CreateForTimeout();
+			}
+			return bytesRead;
 		}
 
 		public ValueTask<int> WriteBytesAsync(ArraySegment<byte> data, IOBehavior ioBehavior)
@@ -99,13 +99,13 @@ namespace MySqlConnector.Protocol.Serialization
 			{
 				return ValueTaskExtensions.FromException<int>(ex);
 			}
+		}
 
-			async Task<int> DoWriteBytesAsync(ArraySegment<byte> data_)
-			{
-				m_socketAwaitable.EventArgs.SetBuffer(data_.Array, data_.Offset, data_.Count);
-				await m_socket.SendAsync(m_socketAwaitable);
-				return 0;
-			}
+		private async Task<int> DoWriteBytesAsync(ArraySegment<byte> data)
+		{
+			m_socketAwaitable.EventArgs.SetBuffer(data.Array, data.Offset, data.Count);
+			await m_socket.SendAsync(m_socketAwaitable);
+			return 0;
 		}
 
 		readonly Socket m_socket;
