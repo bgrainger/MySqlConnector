@@ -1323,25 +1323,21 @@ namespace MySqlConnector.Core
 			catch (PlatformNotSupportedException)
 			{
 			}
-			using (var process = Process.GetCurrentProcess())
-			{
-				attributesWriter.WriteLengthEncodedString("_pid");
-				attributesWriter.WriteLengthEncodedString(process.Id.ToString(CultureInfo.InvariantCulture));
-			}
+			using var process = Process.GetCurrentProcess();
+			attributesWriter.WriteLengthEncodedString("_pid");
+			attributesWriter.WriteLengthEncodedString(process.Id.ToString(CultureInfo.InvariantCulture));
 			if (!string.IsNullOrEmpty(programName))
 			{
 				attributesWriter.WriteLengthEncodedString("program_name");
 				attributesWriter.WriteLengthEncodedString(programName);
 			}
-			using (var connectionAttributesPayload = attributesWriter.ToPayloadData())
-			{
-				var connectionAttributes = connectionAttributesPayload.ArraySegment;
-				var writer = new ByteBufferWriter(connectionAttributes.Count + 9);
-				writer.WriteLengthEncodedInteger((ulong) connectionAttributes.Count);
-				writer.Write(connectionAttributes);
-				using (var payload = writer.ToPayloadData())
-					return payload.ArraySegment.AsSpan().ToArray();
-			}
+			using var connectionAttributesPayload = attributesWriter.ToPayloadData();
+			var connectionAttributes = connectionAttributesPayload.ArraySegment;
+			var writer = new ByteBufferWriter(connectionAttributes.Count + 9);
+			writer.WriteLengthEncodedInteger((ulong) connectionAttributes.Count);
+			writer.Write(connectionAttributes);
+			using var payload = writer.ToPayloadData();
+			return payload.ArraySegment.AsSpan().ToArray();
 		}
 
 		private Exception CreateExceptionForErrorPayload(ReadOnlySpan<byte> span)

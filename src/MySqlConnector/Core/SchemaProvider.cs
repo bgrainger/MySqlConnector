@@ -165,14 +165,12 @@ namespace MySqlConnector.Core
 			using (var command = m_connection.CreateCommand())
 			{
 				command.CommandText = "SELECT " + string.Join(", ", dataTable.Columns.Cast<DataColumn>().Select(x => x.ColumnName)) + " FROM INFORMATION_SCHEMA.ROUTINES;";
-				using (var reader = command.ExecuteReader())
+				using var reader = command.ExecuteReader();
+				while (reader.Read())
 				{
-					while (reader.Read())
-					{
-						var rowValues = new object[dataTable.Columns.Count];
-						reader.GetValues(rowValues);
-						dataTable.Rows.Add(rowValues);
-					}
+					var rowValues = new object[dataTable.Columns.Count];
+					reader.GetValues(rowValues);
+					dataTable.Rows.Add(rowValues);
 				}
 			}
 

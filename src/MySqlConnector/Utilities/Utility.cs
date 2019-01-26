@@ -80,94 +80,92 @@ namespace MySqlConnector.Utilities
 			byte[] seqOid = { 0x30, 0x0D, 0x06, 0x09, 0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x01, 0x01, 0x05, 0x00 };
 
 			// ---------  Set up stream to read the asn.1 encoded SubjectPublicKeyInfo blob  ------
-			using (var stream = new MemoryStream(x509Key))
-			using (var reader = new BinaryReader(stream)) //wrap Memory Stream with BinaryReader for easy reading
+			using var stream = new MemoryStream(x509Key);
+			using var reader = new BinaryReader(stream); //wrap Memory Stream with BinaryReader for easy reading
+			var temp = reader.ReadUInt16();
+			switch (temp)
 			{
-				var temp = reader.ReadUInt16();
-				switch (temp)
-				{
-				case 0x8130:
-					reader.ReadByte(); //advance 1 byte
-					break;
-				case 0x8230:
-					reader.ReadInt16(); //advance 2 bytes
-					break;
-				default:
-					throw new FormatException("Expected 0x8130 or 0x8230 but read {0:X4}".FormatInvariant(temp));
-				}
-
-				var seq = reader.ReadBytes(15);
-				if (!seq.SequenceEqual(seqOid)) //make sure Sequence for OID is correct
-					throw new FormatException("Expected RSA OID but read {0}".FormatInvariant(BitConverter.ToString(seq)));
-
-				temp = reader.ReadUInt16();
-				if (temp == 0x8103) //data read as little endian order (actual data order for Bit String is 03 81)
-					reader.ReadByte(); //advance 1 byte
-				else if (temp == 0x8203)
-					reader.ReadInt16(); //advance 2 bytes
-				else
-					throw new FormatException("Expected 0x8130 or 0x8230 but read {0:X4}".FormatInvariant(temp));
-
-				var bt = reader.ReadByte();
-				if (bt != 0x00) //expect null byte next
-					throw new FormatException("Expected 0x00 but read {0:X2}".FormatInvariant(bt));
-
-				temp = reader.ReadUInt16();
-				if (temp == 0x8130) //data read as little endian order (actual data order for Sequence is 30 81)
-					reader.ReadByte(); //advance 1 byte
-				else if (temp == 0x8230)
-					reader.ReadInt16(); //advance 2 bytes
-				else
-					throw new FormatException("Expected 0x8130 or 0x8230 but read {0:X4}".FormatInvariant(temp));
-
-				temp = reader.ReadUInt16();
-				byte lowbyte;
-				byte highbyte = 0x00;
-
-				if (temp == 0x8102)
-				{
-					//data read as little endian order (actual data order for Integer is 02 81)
-					lowbyte = reader.ReadByte(); // read next bytes which is bytes in modulus
-				}
-				else if (temp == 0x8202)
-				{
-					highbyte = reader.ReadByte(); //advance 2 bytes
-					lowbyte = reader.ReadByte();
-				}
-				else
-				{
-					throw new FormatException("Expected 0x8102 or 0x8202 but read {0:X4}".FormatInvariant(temp));
-				}
-
-				var modulusSize = highbyte * 256 + lowbyte;
-
-				var firstbyte = reader.ReadByte();
-				reader.BaseStream.Seek(-1, SeekOrigin.Current);
-
-				if (firstbyte == 0x00)
-				{
-					//if first byte (highest order) of modulus is zero, don't include it
-					reader.ReadByte(); //skip this null byte
-					modulusSize -= 1; //reduce modulus buffer size by 1
-				}
-
-				var modulus = reader.ReadBytes(modulusSize); //read the modulus bytes
-
-				if (reader.ReadByte() != 0x02) //expect an Integer for the exponent data
-					throw new FormatException("Expected 0x02");
-				int exponentSize = reader.ReadByte(); // should only need one byte for actual exponent data (for all useful values)
-				var exponent = reader.ReadBytes(exponentSize);
-
-				// ------- create RSACryptoServiceProvider instance and initialize with public key -----
-				var rsa = RSA.Create();
-				var rsaKeyInfo = new RSAParameters
-				{
-					Modulus = modulus,
-					Exponent = exponent
-				};
-				rsa.ImportParameters(rsaKeyInfo);
-				return rsa;
+			case 0x8130:
+				reader.ReadByte(); //advance 1 byte
+				break;
+			case 0x8230:
+				reader.ReadInt16(); //advance 2 bytes
+				break;
+			default:
+				throw new FormatException("Expected 0x8130 or 0x8230 but read {0:X4}".FormatInvariant(temp));
 			}
+
+			var seq = reader.ReadBytes(15);
+			if (!seq.SequenceEqual(seqOid)) //make sure Sequence for OID is correct
+				throw new FormatException("Expected RSA OID but read {0}".FormatInvariant(BitConverter.ToString(seq)));
+
+			temp = reader.ReadUInt16();
+			if (temp == 0x8103) //data read as little endian order (actual data order for Bit String is 03 81)
+				reader.ReadByte(); //advance 1 byte
+			else if (temp == 0x8203)
+				reader.ReadInt16(); //advance 2 bytes
+			else
+				throw new FormatException("Expected 0x8130 or 0x8230 but read {0:X4}".FormatInvariant(temp));
+
+			var bt = reader.ReadByte();
+			if (bt != 0x00) //expect null byte next
+				throw new FormatException("Expected 0x00 but read {0:X2}".FormatInvariant(bt));
+
+			temp = reader.ReadUInt16();
+			if (temp == 0x8130) //data read as little endian order (actual data order for Sequence is 30 81)
+				reader.ReadByte(); //advance 1 byte
+			else if (temp == 0x8230)
+				reader.ReadInt16(); //advance 2 bytes
+			else
+				throw new FormatException("Expected 0x8130 or 0x8230 but read {0:X4}".FormatInvariant(temp));
+
+			temp = reader.ReadUInt16();
+			byte lowbyte;
+			byte highbyte = 0x00;
+
+			if (temp == 0x8102)
+			{
+				//data read as little endian order (actual data order for Integer is 02 81)
+				lowbyte = reader.ReadByte(); // read next bytes which is bytes in modulus
+			}
+			else if (temp == 0x8202)
+			{
+				highbyte = reader.ReadByte(); //advance 2 bytes
+				lowbyte = reader.ReadByte();
+			}
+			else
+			{
+				throw new FormatException("Expected 0x8102 or 0x8202 but read {0:X4}".FormatInvariant(temp));
+			}
+
+			var modulusSize = highbyte * 256 + lowbyte;
+
+			var firstbyte = reader.ReadByte();
+			reader.BaseStream.Seek(-1, SeekOrigin.Current);
+
+			if (firstbyte == 0x00)
+			{
+				//if first byte (highest order) of modulus is zero, don't include it
+				reader.ReadByte(); //skip this null byte
+				modulusSize -= 1; //reduce modulus buffer size by 1
+			}
+
+			var modulus = reader.ReadBytes(modulusSize); //read the modulus bytes
+
+			if (reader.ReadByte() != 0x02) //expect an Integer for the exponent data
+				throw new FormatException("Expected 0x02");
+			int exponentSize = reader.ReadByte(); // should only need one byte for actual exponent data (for all useful values)
+			var exponent = reader.ReadBytes(exponentSize);
+
+			// ------- create RSACryptoServiceProvider instance and initialize with public key -----
+			var rsa = RSA.Create();
+			var rsaKeyInfo = new RSAParameters
+			{
+				Modulus = modulus,
+				Exponent = exponent
+			};
+			rsa.ImportParameters(rsaKeyInfo);
+			return rsa;
 		}
 
 		/// <summary>

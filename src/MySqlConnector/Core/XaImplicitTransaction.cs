@@ -44,11 +44,9 @@ namespace MySqlConnector.Core
 
 		private void ExecuteXaCommand(string statement)
 		{
-			using (var cmd = Connection.CreateCommand())
-			{
-				cmd.CommandText = "XA " + statement + " " + m_xid;
-				cmd.ExecuteNonQuery();
-			}
+			using var cmd = Connection.CreateCommand();
+			cmd.CommandText = "XA " + statement + " " + m_xid;
+			cmd.ExecuteNonQuery();
 		}
 
 		static int s_currentId;

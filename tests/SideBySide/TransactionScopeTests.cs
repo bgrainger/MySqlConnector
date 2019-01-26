@@ -30,44 +30,35 @@ namespace SideBySide
 		[MemberData(nameof(ConnectionStrings))]
 		public void EnlistTwoTransactions(string connectionString)
 		{
-			using (var connection = new MySqlConnection(AppConfig.ConnectionString + ";" + connectionString))
-			{
-				connection.Open();
+			using var connection = new MySqlConnection(AppConfig.ConnectionString + ";" + connectionString);
+			connection.Open();
 
-				using (var transaction1 = new CommittableTransaction())
-				using (var transaction2 = new CommittableTransaction())
-				{
-					connection.EnlistTransaction(transaction1);
-					Assert.Throws<MySqlException>(() => connection.EnlistTransaction(transaction2));
-				}
-			}
+			using var transaction1 = new CommittableTransaction();
+			using var transaction2 = new CommittableTransaction();
+			connection.EnlistTransaction(transaction1);
+			Assert.Throws<MySqlException>(() => connection.EnlistTransaction(transaction2));
 		}
 
 		[Theory]
 		[MemberData(nameof(ConnectionStrings))]
 		public void BeginTransactionInScope(string connectionString)
 		{
-			using (var transactionScope = new TransactionScope())
-			using (var connection = new MySqlConnection(AppConfig.ConnectionString + ";" + connectionString))
-			{
-				connection.Open();
-				Assert.Throws<InvalidOperationException>(() => connection.BeginTransaction());
-			}
+			using var transactionScope = new TransactionScope();
+			using var connection = new MySqlConnection(AppConfig.ConnectionString + ";" + connectionString);
+			connection.Open();
+			Assert.Throws<InvalidOperationException>(() => connection.BeginTransaction());
 		}
 
 		[Theory]
 		[MemberData(nameof(ConnectionStrings))]
 		public void BeginTransactionThenEnlist(string connectionString)
 		{
-			using (var connection = new MySqlConnection(AppConfig.ConnectionString + ";" + connectionString))
-			{
-				connection.Open();
-				using (var dbTransaction = connection.BeginTransaction())
-				using (var transaction = new CommittableTransaction())
-				{
-					Assert.Throws<InvalidOperationException>(() => connection.EnlistTransaction(transaction));
-				}
-			}
+			using var connection = new MySqlConnection(AppConfig.ConnectionString + ";" + connectionString);
+			connection.Open();
+
+			using var dbTransaction = connection.BeginTransaction();
+			using var transaction = new CommittableTransaction();
+			Assert.Throws<InvalidOperationException>(() => connection.EnlistTransaction(transaction));
 		}
 
 		[Theory]
@@ -79,13 +70,11 @@ namespace SideBySide
 
 			using (var transactionScope = new TransactionScope())
 			{
-				using (var conn = new MySqlConnection(AppConfig.ConnectionString + ";" + connectionString))
-				{
-					conn.Open();
-					conn.Execute("insert into transaction_scope_test(value) values(1), (2);");
+				using var conn = new MySqlConnection(AppConfig.ConnectionString + ";" + connectionString);
+				conn.Open();
+				conn.Execute("insert into transaction_scope_test(value) values(1), (2);");
 
-					transactionScope.Complete();
-				}
+				transactionScope.Complete();
 			}
 
 			var values = m_database.Connection.Query<int>(@"select value from transaction_scope_test order by value;").ToList();
@@ -102,12 +91,10 @@ namespace SideBySide
 			using (var conn = new MySqlConnection(AppConfig.ConnectionString + ";" + connectionString))
 			{
 				conn.Open();
-				using (var transaction = new CommittableTransaction())
-				{
-					conn.EnlistTransaction(transaction);
-					conn.Execute("insert into transaction_scope_test(value) values(1), (2);");
-					transaction.Commit();
-				}
+				using var transaction = new CommittableTransaction();
+				conn.EnlistTransaction(transaction);
+				conn.Execute("insert into transaction_scope_test(value) values(1), (2);");
+				transaction.Commit();
 			}
 
 			var values = m_database.Connection.Query<int>(@"select value from transaction_scope_test order by value;").ToList();
@@ -123,11 +110,9 @@ namespace SideBySide
 
 			using (var transactionScope = new TransactionScope())
 			{
-				using (var conn = new MySqlConnection(AppConfig.ConnectionString + ";" + connectionString))
-				{
-					conn.Open();
-					conn.Execute("insert into transaction_scope_test(value) values(1), (2);");
-				}
+				using var conn = new MySqlConnection(AppConfig.ConnectionString + ";" + connectionString);
+				conn.Open();
+				conn.Execute("insert into transaction_scope_test(value) values(1), (2);");
 			}
 
 			var values = m_database.Connection.Query<int>(@"select value from transaction_scope_test order by value;").ToList();
@@ -144,11 +129,9 @@ namespace SideBySide
 			using (var conn = new MySqlConnection(AppConfig.ConnectionString + ";" + connectionString))
 			{
 				conn.Open();
-				using (var transaction = new CommittableTransaction())
-				{
-					conn.EnlistTransaction(transaction);
-					conn.Execute("insert into transaction_scope_test(value) values(1), (2);");
-				}
+				using var transaction = new CommittableTransaction();
+				conn.EnlistTransaction(transaction);
+				conn.Execute("insert into transaction_scope_test(value) values(1), (2);");
 			}
 
 			var values = m_database.Connection.Query<int>(@"select value from transaction_scope_test order by value;").ToList();
@@ -164,16 +147,12 @@ namespace SideBySide
 
 			try
 			{
-				using (var transactionScope = new TransactionScope())
-				{
-					using (var conn = new MySqlConnection(AppConfig.ConnectionString + ";" + connectionString))
-					{
-						conn.Open();
-						conn.Execute("insert into transaction_scope_test(value) values(1), (2);");
+				using var transactionScope = new TransactionScope();
+				using var conn = new MySqlConnection(AppConfig.ConnectionString + ";" + connectionString);
+				conn.Open();
+				conn.Execute("insert into transaction_scope_test(value) values(1), (2);");
 
-						throw new ApplicationException();
-					}
-				}
+				throw new ApplicationException();
 			}
 			catch (ApplicationException)
 			{
@@ -192,18 +171,14 @@ namespace SideBySide
 
 			try
 			{
-				using (var transactionScope = new TransactionScope())
-				{
-					using (var conn = new MySqlConnection(AppConfig.ConnectionString + ";" + connectionString))
-					{
-						conn.Open();
-						conn.Execute("insert into transaction_scope_test(value) values(1), (2);");
+				using var transactionScope = new TransactionScope();
+				using var conn = new MySqlConnection(AppConfig.ConnectionString + ";" + connectionString);
+				conn.Open();
+				conn.Execute("insert into transaction_scope_test(value) values(1), (2);");
 
-						transactionScope.Complete();
+				transactionScope.Complete();
 
-						throw new ApplicationException();
-					}
-				}
+				throw new ApplicationException();
 			}
 			catch (ApplicationException)
 			{
@@ -224,13 +199,11 @@ namespace SideBySide
 			using (var conn = new MySqlConnection(AppConfig.ConnectionString + ";auto enlist=false;" + connectionString))
 			{
 				conn.Open();
-				using (var dbTransaction = conn.BeginTransaction())
-				{
-					conn.Execute("insert into transaction_scope_test(value) values(1), (2);", transaction: dbTransaction);
+				using var dbTransaction = conn.BeginTransaction();
+				conn.Execute("insert into transaction_scope_test(value) values(1), (2);", transaction: dbTransaction);
 
-					dbTransaction.Commit();
-					transactionScope.Complete();
-				}
+				dbTransaction.Commit();
+				transactionScope.Complete();
 			}
 
 			var values = m_database.Connection.Query<int>(@"select value from transaction_scope_test order by value;").ToList();
@@ -248,18 +221,16 @@ namespace SideBySide
 			using (var conn = new MySqlConnection(AppConfig.ConnectionString + ";auto enlist=false;" + connectionString))
 			{
 				conn.Open();
-				using (var dbTransaction = conn.BeginTransaction())
-				{
-					conn.Execute("insert into transaction_scope_test(value) values(1), (2);", transaction: dbTransaction);
+				using var dbTransaction = conn.BeginTransaction();
+				conn.Execute("insert into transaction_scope_test(value) values(1), (2);", transaction: dbTransaction);
 
 #if BASELINE
-					// With Connector/NET a MySqlTransaction can't roll back after TransactionScope has been completed;
-					// workaround is to explicitly dispose it first. In MySqlConnector (with AutoEnlist=false) they have
-					// independent lifetimes.
-					dbTransaction.Dispose();
+				// With Connector/NET a MySqlTransaction can't roll back after TransactionScope has been completed;
+				// workaround is to explicitly dispose it first. In MySqlConnector (with AutoEnlist=false) they have
+				// independent lifetimes.
+				dbTransaction.Dispose();
 #endif
-					transactionScope.Complete();
-				}
+				transactionScope.Complete();
 			}
 
 			var values = m_database.Connection.Query<int>(@"select value from transaction_scope_test order by value;").ToList();
@@ -431,25 +402,19 @@ insert into transaction_scope_test(value) values('one'),('two'),('three');");
 		public void UsingSequentialConnectionsInOneTransactionReusesPhysicalConnection(string connectionString)
 		{
 			connectionString = AppConfig.ConnectionString + ";AutoEnlist=false;" + connectionString;
-			using (var transaction = new CommittableTransaction())
-			{
-				using (var connection1 = new MySqlConnection(connectionString))
-				{
-					connection1.Open();
-					connection1.EnlistTransaction(transaction);
-					var sessionId1 = connection1.ServerThread;
+			using var transaction = new CommittableTransaction();
+			using var connection1 = new MySqlConnection(connectionString);
+			connection1.Open();
+			connection1.EnlistTransaction(transaction);
+			var sessionId1 = connection1.ServerThread;
 
-					using (var connection2 = new MySqlConnection(connectionString))
-					{
-						connection2.Open();
-						Assert.NotEqual(sessionId1, connection2.ServerThread);
+			using var connection2 = new MySqlConnection(connectionString);
+			connection2.Open();
+			Assert.NotEqual(sessionId1, connection2.ServerThread);
 
-						connection1.Close();
-						connection2.EnlistTransaction(transaction);
-						Assert.Equal(sessionId1, connection2.ServerThread);
-					}
-				}
-			}
+			connection1.Close();
+			connection2.EnlistTransaction(transaction);
+			Assert.Equal(sessionId1, connection2.ServerThread);
 		}
 
 		[SkippableFact(Baseline = "Multiple simultaneous connections or connections with different connection strings inside the same transaction are not currently supported.")]
@@ -462,19 +427,15 @@ insert into transaction_scope_test(value) values('one'),('two'),('three');");
 
 			using (var transactionScope = new TransactionScope())
 			{
-				using (var conn1 = new MySqlConnection(AppConfig.ConnectionString))
-				{
-					conn1.Open();
-					conn1.Execute("insert into transaction_scope_test_1(value) values(1), (2);");
+				using var conn1 = new MySqlConnection(AppConfig.ConnectionString);
+				conn1.Open();
+				conn1.Execute("insert into transaction_scope_test_1(value) values(1), (2);");
 
-					using (var conn2 = new MySqlConnection(AppConfig.ConnectionString))
-					{
-						conn2.Open();
-						conn2.Execute("insert into transaction_scope_test_2(value) values(3), (4);");
+				using var conn2 = new MySqlConnection(AppConfig.ConnectionString);
+				conn2.Open();
+				conn2.Execute("insert into transaction_scope_test_2(value) values(3), (4);");
 
-						transactionScope.Complete();
-					}
-				}
+				transactionScope.Complete();
 			}
 
 			var values1 = m_database.Connection.Query<int>(@"select value from transaction_scope_test_1 order by value;").ToList();
@@ -493,17 +454,13 @@ insert into transaction_scope_test(value) values('one'),('two'),('three');");
 
 			using (var transactionScope = new TransactionScope())
 			{
-				using (var conn1 = new MySqlConnection(AppConfig.ConnectionString))
-				{
-					conn1.Open();
-					conn1.Execute("insert into transaction_scope_test_1(value) values(1), (2);");
+				using var conn1 = new MySqlConnection(AppConfig.ConnectionString);
+				conn1.Open();
+				conn1.Execute("insert into transaction_scope_test_1(value) values(1), (2);");
 
-					using (var conn2 = new MySqlConnection(AppConfig.ConnectionString))
-					{
-						conn2.Open();
-						conn2.Execute("insert into transaction_scope_test_2(value) values(3), (4);");
-					}
-				}
+				using var conn2 = new MySqlConnection(AppConfig.ConnectionString);
+				conn2.Open();
+				conn2.Execute("insert into transaction_scope_test_2(value) values(3), (4);");
 			}
 
 			var values1 = m_database.Connection.Query<int>(@"select value from transaction_scope_test_1 order by value;").ToList();
@@ -522,15 +479,11 @@ insert into transaction_scope_test(value) values('one'),('two'),('three');");
 
 			using (new TransactionScope())
 			{
-				using (var conn1 = new MySqlConnection(connectionString))
-				{
-					conn1.Open();
+				using var conn1 = new MySqlConnection(connectionString);
+				conn1.Open();
 
-					using (var conn2 = new MySqlConnection(connectionString))
-					{
-						Assert.Throws<NotSupportedException>(() => conn2.Open());
-					}
-				}
+				using var conn2 = new MySqlConnection(connectionString);
+				Assert.Throws<NotSupportedException>(() => conn2.Open());
 			}
 		}
 
@@ -596,15 +549,11 @@ insert into transaction_scope_test(value) values('one'),('two'),('three');");
 
 			using (new TransactionScope())
 			{
-				using (var conn1 = new MySqlConnection(connectionString))
-				{
-					conn1.Open();
-				}
+				using var conn1 = new MySqlConnection(connectionString);
+				conn1.Open();
 
-				using (var conn2 = new MySqlConnection(connectionString + ";MaxPoolSize=6"))
-				{
-					Assert.Throws<NotSupportedException>(() => conn2.Open());
-				}
+				using var conn2 = new MySqlConnection(connectionString + ";MaxPoolSize=6");
+				Assert.Throws<NotSupportedException>(() => conn2.Open());
 			}
 		}
 
@@ -614,15 +563,11 @@ insert into transaction_scope_test(value) values('one'),('two'),('three');");
 		{
 			using (new TransactionScope())
 			{
-				using (var conn1 = new MySqlConnection(AppConfig.ConnectionString))
-				{
-					conn1.Open();
+				using var conn1 = new MySqlConnection(AppConfig.ConnectionString);
+				conn1.Open();
 
-					using (var conn2 = new MySqlConnection(AppConfig.ConnectionString + ";UseXaTransactions=False"))
-					{
-						Assert.Throws<NotSupportedException>(() => conn2.Open());
-					}
-				}
+				using var conn2 = new MySqlConnection(AppConfig.ConnectionString + ";UseXaTransactions=False");
+				Assert.Throws<NotSupportedException>(() => conn2.Open());
 			}
 		}
 
@@ -631,15 +576,11 @@ insert into transaction_scope_test(value) values('one'),('two'),('three');");
 		{
 			using (new TransactionScope())
 			{
-				using (var conn1 = new MySqlConnection(AppConfig.ConnectionString + ";UseXaTransactions=False"))
-				{
-					conn1.Open();
+				using var conn1 = new MySqlConnection(AppConfig.ConnectionString + ";UseXaTransactions=False");
+				conn1.Open();
 
-					using (var conn2 = new MySqlConnection(AppConfig.ConnectionString))
-					{
-						Assert.Throws<NotSupportedException>(() => conn2.Open());
-					}
-				}
+				using var conn2 = new MySqlConnection(AppConfig.ConnectionString);
+				Assert.Throws<NotSupportedException>(() => conn2.Open());
 			}
 		}
 #endif

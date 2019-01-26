@@ -18,6 +18,7 @@
     <AssemblyName>MySqlConnector.Tests</AssemblyName>
     <PackageId>MySqlConnector.Tests</PackageId>
     <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
+    <LangVersion>8.0</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>

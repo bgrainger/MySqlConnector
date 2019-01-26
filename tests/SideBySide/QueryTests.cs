@@ -26,72 +26,57 @@ namespace SideBySide
 		[Fact]
 		public void GetOrdinal()
 		{
-			using (var cmd = m_database.Connection.CreateCommand())
-			{
-				cmd.CommandText = "select 0 as zero, 1 as one;";
-				using (var reader = cmd.ExecuteReader())
-				{
-					Assert.Equal(0, reader.GetOrdinal("zero"));
-					Assert.Equal(1, reader.GetOrdinal("one"));
-				}
-			}
+			using var cmd = m_database.Connection.CreateCommand();
+			cmd.CommandText = "select 0 as zero, 1 as one;";
+
+			using var reader = cmd.ExecuteReader();
+			Assert.Equal(0, reader.GetOrdinal("zero"));
+			Assert.Equal(1, reader.GetOrdinal("one"));
 		}
 
 		[Fact]
 		public void GetOrdinalIgnoreCase()
 		{
-			using (var cmd = m_database.Connection.CreateCommand())
-			{
-				cmd.CommandText = "select 0 as zero, 1 as one;";
-				using (var reader = cmd.ExecuteReader())
-				{
-					Assert.Equal(0, reader.GetOrdinal("Zero"));
-					Assert.Equal(1, reader.GetOrdinal("ONE"));
-				}
-			}
+			using var cmd = m_database.Connection.CreateCommand();
+			cmd.CommandText = "select 0 as zero, 1 as one;";
+
+			using var reader = cmd.ExecuteReader();
+			Assert.Equal(0, reader.GetOrdinal("Zero"));
+			Assert.Equal(1, reader.GetOrdinal("ONE"));
 		}
 
 		[Fact]
 		public void GetOrdinalExceptionForNoColumn()
 		{
-			using (var cmd = m_database.Connection.CreateCommand())
-			{
-				cmd.CommandText = "select 0 as zero, 1 as one;";
-				using (var reader = cmd.ExecuteReader())
-				{
-					Assert.Throws<IndexOutOfRangeException>(() => reader.GetOrdinal("three"));
-				}
-			}
+			using var cmd = m_database.Connection.CreateCommand();
+			cmd.CommandText = "select 0 as zero, 1 as one;";
+
+			using var reader = cmd.ExecuteReader();
+			Assert.Throws<IndexOutOfRangeException>(() => reader.GetOrdinal("three"));
 		}
 
 		[Fact]
 		public void GetOrdinalExceptionForNull()
 		{
-			using (var cmd = m_database.Connection.CreateCommand())
-			{
-				cmd.CommandText = "select 0 as zero, 1 as one;";
-				using (var reader = cmd.ExecuteReader())
-				{
-					Assert.Throws<ArgumentNullException>(() => reader.GetOrdinal(null));
-				}
-			}
+			using var cmd = m_database.Connection.CreateCommand();
+			cmd.CommandText = "select 0 as zero, 1 as one;";
+
+			using var reader = cmd.ExecuteReader();
+			Assert.Throws<ArgumentNullException>(() => reader.GetOrdinal(null));
 		}
 
 		[Fact]
 		public void GetOrdinalBeforeAndAfterRead()
 		{
-			using (var cmd = m_database.Connection.CreateCommand())
-			{
-				cmd.CommandText = "select 0 as zero, 1 as one;";
-				using (var reader = cmd.ExecuteReader())
-				{
-					Assert.Equal(1, reader.GetOrdinal("one"));
-					Assert.True(reader.Read());
-					Assert.Equal(1, reader.GetOrdinal("one"));
-					Assert.False(reader.Read());
-					Assert.Equal(1, reader.GetOrdinal("one"));
-				}
-			}
+			using var cmd = m_database.Connection.CreateCommand();
+			cmd.CommandText = "select 0 as zero, 1 as one;";
+
+			using var reader = cmd.ExecuteReader();
+			Assert.Equal(1, reader.GetOrdinal("one"));
+			Assert.True(reader.Read());
+			Assert.Equal(1, reader.GetOrdinal("one"));
+			Assert.False(reader.Read());
+			Assert.Equal(1, reader.GetOrdinal("one"));
 		}
 
 		[Fact]
@@ -99,13 +84,12 @@ namespace SideBySide
 		{
 			var csb = AppConfig.CreateConnectionStringBuilder();
 			csb.AllowUserVariables = false;
-			using (var connection = new MySqlConnection(csb.ConnectionString))
-			{
-				connection.Open();
-				var cmd = connection.CreateCommand();
-				cmd.CommandText = "set @var = 1; select @var + 1;";
-				Assert.Throws<MySqlException>(() => cmd.ExecuteScalar());
-			}
+			using var connection = new MySqlConnection(csb.ConnectionString);
+			connection.Open();
+
+			using var cmd = connection.CreateCommand();
+			cmd.CommandText = "set @var = 1; select @var + 1;";
+			Assert.Throws<MySqlException>(() => cmd.ExecuteScalar());
 		}
 
 		[Fact]
@@ -113,13 +97,12 @@ namespace SideBySide
 		{
 			var csb = AppConfig.CreateConnectionStringBuilder();
 			csb.AllowUserVariables = true;
-			using (var connection = new MySqlConnection(csb.ConnectionString))
-			{
-				connection.Open();
-				var cmd = connection.CreateCommand();
-				cmd.CommandText = "set @var = 1; select @var + 1;";
-				Assert.Equal(2L, cmd.ExecuteScalar());
-			}
+			using var connection = new MySqlConnection(csb.ConnectionString);
+			connection.Open();
+
+			using var cmd = connection.CreateCommand();
+			cmd.CommandText = "set @var = 1; select @var + 1;";
+			Assert.Equal(2L, cmd.ExecuteScalar());
 		}
 
 		[Fact]
@@ -137,8 +120,8 @@ insert into query_test (value) VALUES (1);
 			using (var cmd = m_database.Connection.CreateCommand())
 			{
 				cmd.CommandText = "select id, value FROM query_test;";
-				using (var reader = cmd.ExecuteReader())
-					Assert.False(reader.NextResult());
+				using var reader = cmd.ExecuteReader();
+				Assert.False(reader.NextResult());
 			}
 		}
 
@@ -365,66 +348,55 @@ insert into query_null_parameter (id, value) VALUES (1, 'one'), (2, 'two'), (3, 
 			{
 				cmd.CommandText = "select id, value FROM query_null_parameter where @parameter is null or value = @parameter order by id;";
 				cmd.Parameters.Add(new MySqlParameter { ParameterName = "@parameter", Value = "one" });
-				using (var reader = cmd.ExecuteReader())
-				{
-					Assert.True(await reader.ReadAsync());
-					Assert.Equal(1L, reader.GetInt64(0));
-					Assert.False(await reader.ReadAsync());
-					Assert.False(await reader.NextResultAsync());
-				}
+				using var reader = cmd.ExecuteReader();
+				Assert.True(await reader.ReadAsync());
+				Assert.Equal(1L, reader.GetInt64(0));
+				Assert.False(await reader.ReadAsync());
+				Assert.False(await reader.NextResultAsync());
 			}
 
 			using (var cmd = m_database.Connection.CreateCommand())
 			{
 				cmd.CommandText = "select id, value FROM query_null_parameter where @parameter is null or value = @parameter order by id;";
 				cmd.Parameters.Add(new MySqlParameter { ParameterName = "@parameter", Value = null });
-				using (var reader = cmd.ExecuteReader())
-				{
-					Assert.True(await reader.ReadAsync());
-					Assert.Equal(1L, reader.GetInt64(0));
-					Assert.True(await reader.ReadAsync());
-					Assert.Equal(2L, reader.GetInt64(0));
-					Assert.True(await reader.ReadAsync());
-					Assert.Equal(3L, reader.GetInt64(0));
-					Assert.False(await reader.ReadAsync());
-					Assert.False(await reader.NextResultAsync());
-				}
+				using var reader = cmd.ExecuteReader();
+				Assert.True(await reader.ReadAsync());
+				Assert.Equal(1L, reader.GetInt64(0));
+				Assert.True(await reader.ReadAsync());
+				Assert.Equal(2L, reader.GetInt64(0));
+				Assert.True(await reader.ReadAsync());
+				Assert.Equal(3L, reader.GetInt64(0));
+				Assert.False(await reader.ReadAsync());
+				Assert.False(await reader.NextResultAsync());
 			}
 		}
 
 		[Fact]
 		public async Task DoubleDispose()
 		{
-			using (var cmd = m_database.Connection.CreateCommand())
-			{
-				cmd.CommandText = @"select 1;";
-				using (var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false))
-				{
-					Assert.True(await reader.ReadAsync().ConfigureAwait(false));
-					reader.Dispose();
-					reader.Dispose();
-				}
-			}
+			using var cmd = m_database.Connection.CreateCommand();
+			cmd.CommandText = @"select 1;";
+			using var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
+			Assert.True(await reader.ReadAsync().ConfigureAwait(false));
+			reader.Dispose();
+			reader.Dispose();
 		}
 
 		[Fact]
 		public async Task MultipleStatementsWithInvalidSql()
 		{
-			using (var cmd = m_database.Connection.CreateCommand())
-			{
-				cmd.CommandText = @"select 1; select 1 from mysql.abc; select 2;";
-				using (var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false))
-				{
-					Assert.True(await reader.ReadAsync().ConfigureAwait(false));
-					Assert.Equal(1, reader.GetInt32(0));
-					Assert.False(await reader.ReadAsync().ConfigureAwait(false));
+			using var cmd = m_database.Connection.CreateCommand();
+			cmd.CommandText = @"select 1; select 1 from mysql.abc; select 2;";
 
-					await Assert.ThrowsAsync<MySqlException>(() => reader.NextResultAsync());
-					Assert.False(await reader.ReadAsync().ConfigureAwait(false));
+			using var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
+			Assert.True(await reader.ReadAsync().ConfigureAwait(false));
+			Assert.Equal(1, reader.GetInt32(0));
+			Assert.False(await reader.ReadAsync().ConfigureAwait(false));
 
-					Assert.False(await reader.NextResultAsync().ConfigureAwait(false));
-				}
-			}
+			await Assert.ThrowsAsync<MySqlException>(() => reader.NextResultAsync());
+			Assert.False(await reader.ReadAsync().ConfigureAwait(false));
+
+			Assert.False(await reader.NextResultAsync().ConfigureAwait(false));
 		}
 
 		[Fact]
@@ -456,8 +428,8 @@ insert into query_null_parameter (id, value) VALUES (1, 'one'), (2, 'two'), (3, 
 			using (var cmd = m_database.Connection.CreateCommand())
 			{
 				cmd.CommandText = @"select value from query_enumerator order by value asc;";
-				using (var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false))
-					Assert.Equal(new[] { "four", "one", "three", "two" }, reader.Cast<IDataRecord>().Select(x => x.GetString(0)));
+				using var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
+				Assert.Equal(new[] { "four", "one", "three", "two" }, reader.Cast<IDataRecord>().Select(x => x.GetString(0)));
 			}
 		}
 
@@ -524,29 +496,24 @@ insert into query_null_parameter (id, value) VALUES (1, 'one'), (2, 'two'), (3, 
 		[Fact]
 		public void ExecuteScalarReturnsDBNull()
 		{
-			using (var command = m_database.Connection.CreateCommand())
-			{
-				command.CommandText = "select null; select 2;";
-				var result = command.ExecuteScalar();
-				Assert.Equal(DBNull.Value, result);
-			}
+			using var command = m_database.Connection.CreateCommand();
+			command.CommandText = "select null; select 2;";
+			var result = command.ExecuteScalar();
+			Assert.Equal(DBNull.Value, result);
 		}
 
 		[Fact]
 		public void TrailingCommentIsNotAResultSet()
 		{
-			using (var command = m_database.Connection.CreateCommand())
-			{
-				command.CommandText = "select 0; -- trailing comment";
-				using (var reader = command.ExecuteReader())
-				{
-					Assert.True(reader.Read());
-					Assert.Equal(0, reader.GetInt32(0));
-					Assert.False(reader.NextResult());
-					Assert.False(reader.HasRows);
-					Assert.False(reader.Read());
-				}
-			}
+			using var command = m_database.Connection.CreateCommand();
+			command.CommandText = "select 0; -- trailing comment";
+
+			using var reader = command.ExecuteReader();
+			Assert.True(reader.Read());
+			Assert.Equal(0, reader.GetInt32(0));
+			Assert.False(reader.NextResult());
+			Assert.False(reader.HasRows);
+			Assert.False(reader.Read());
 		}
 
 		[Fact]
@@ -556,18 +523,14 @@ insert into query_null_parameter (id, value) VALUES (1, 'one'), (2, 'two'), (3, 
 			create table sum_bytes(value tinyint unsigned not null);
 			insert into sum_bytes(value) values(0), (1), (2), (254), (255);");
 
-			using (var cmd = m_database.Connection.CreateCommand())
-			{
-				cmd.CommandText = "select sum(value) from sum_bytes";
-				Assert.Equal(512m, cmd.ExecuteScalar());
+			using var cmd = m_database.Connection.CreateCommand();
+			cmd.CommandText = "select sum(value) from sum_bytes";
+			Assert.Equal(512m, cmd.ExecuteScalar());
 
-				using (var reader = cmd.ExecuteReader())
-				{
-					Assert.True(reader.Read());
-					Assert.Equal(512m, reader.GetValue(0));
-					Assert.Equal(512, reader.GetInt32(0));
-				}
-			}
+			using var reader = cmd.ExecuteReader();
+			Assert.True(reader.Read());
+			Assert.Equal(512m, reader.GetValue(0));
+			Assert.Equal(512, reader.GetInt32(0));
 		}
 
 		[Fact]
@@ -577,20 +540,16 @@ insert into query_null_parameter (id, value) VALUES (1, 'one'), (2, 'two'), (3, 
 			create table sum_shorts(value smallint unsigned not null);
 			insert into sum_shorts(value) values(0), (1), (2), (32766), (32767);");
 
-			using (var cmd = m_database.Connection.CreateCommand())
-			{
-				cmd.CommandText = "select sum(value) from sum_shorts";
-				Assert.Equal(65536m, cmd.ExecuteScalar());
+			using var cmd = m_database.Connection.CreateCommand();
+			cmd.CommandText = "select sum(value) from sum_shorts";
+			Assert.Equal(65536m, cmd.ExecuteScalar());
 
-				using (var reader = cmd.ExecuteReader())
-				{
-					Assert.True(reader.Read());
-					Assert.Equal(65536m, reader.GetValue(0));
-					Assert.Throws<OverflowException>(() => reader.GetInt16(0));
-					Assert.Equal(65536, reader.GetInt32(0));
-					Assert.Equal(65536L, reader.GetInt64(0));
-				}
-			}
+			using var reader = cmd.ExecuteReader();
+			Assert.True(reader.Read());
+			Assert.Equal(65536m, reader.GetValue(0));
+			Assert.Throws<OverflowException>(() => reader.GetInt16(0));
+			Assert.Equal(65536, reader.GetInt32(0));
+			Assert.Equal(65536L, reader.GetInt64(0));
 		}
 
 		[Fact]
@@ -600,19 +559,15 @@ insert into query_null_parameter (id, value) VALUES (1, 'one'), (2, 'two'), (3, 
 			create table sum_ints(value int unsigned not null);
 			insert into sum_ints(value) values(0), (1), (2), (2147483646), (2147483647);");
 
-			using (var cmd = m_database.Connection.CreateCommand())
-			{
-				cmd.CommandText = "select sum(value) from sum_ints";
-				Assert.Equal(4294967296m, cmd.ExecuteScalar());
+			using var cmd = m_database.Connection.CreateCommand();
+			cmd.CommandText = "select sum(value) from sum_ints";
+			Assert.Equal(4294967296m, cmd.ExecuteScalar());
 
-				using (var reader = cmd.ExecuteReader())
-				{
-					Assert.True(reader.Read());
-					Assert.Equal(4294967296m, reader.GetValue(0));
-					Assert.Throws<OverflowException>(() => reader.GetInt32(0));
-					Assert.Equal(4294967296L, reader.GetInt64(0));
-				}
-			}
+			using var reader = cmd.ExecuteReader();
+			Assert.True(reader.Read());
+			Assert.Equal(4294967296m, reader.GetValue(0));
+			Assert.Throws<OverflowException>(() => reader.GetInt32(0));
+			Assert.Equal(4294967296L, reader.GetInt64(0));
 		}
 
 		[Fact]
@@ -661,15 +616,12 @@ insert into query_null_parameter (id, value) VALUES (1, 'one'), (2, 'two'), (3, 
 		[InlineData("sqrt(2)", typeof(double))]
 		public void GetFieldType(string value, Type expectedType)
 		{
-			using (var cmd = m_database.Connection.CreateCommand())
-			{
-				cmd.CommandText = "select " + value + ";";
-				using (var reader = cmd.ExecuteReader())
-				{
-					Assert.True(reader.Read());
-					Assert.Equal(expectedType, reader.GetFieldType(0));
-				}
-			}
+			using var cmd = m_database.Connection.CreateCommand();
+			cmd.CommandText = "select " + value + ";";
+
+			using var reader = cmd.ExecuteReader();
+			Assert.True(reader.Read());
+			Assert.Equal(expectedType, reader.GetFieldType(0));
 		}
 
 		[Theory]
@@ -690,15 +642,12 @@ insert into query_null_parameter (id, value) VALUES (1, 'one'), (2, 'two'), (3, 
 		[InlineData("sqrt(2)", "DOUBLE")]
 		public void GetDataTypeName(string value, string expectedDataType)
 		{
-			using (var cmd = m_database.Connection.CreateCommand())
-			{
-				cmd.CommandText = "select " + value + ";";
-				using (var reader = cmd.ExecuteReader())
-				{
-					Assert.True(reader.Read());
-					Assert.Equal(expectedDataType, reader.GetDataTypeName(0));
-				}
-			}
+			using var cmd = m_database.Connection.CreateCommand();
+			cmd.CommandText = "select " + value + ";";
+
+			using var reader = cmd.ExecuteReader();
+			Assert.True(reader.Read());
+			Assert.Equal(expectedDataType, reader.GetDataTypeName(0));
 		}
 
 		private void UseReaderWithoutDisposingThread(object obj)
@@ -709,16 +658,14 @@ insert into query_null_parameter (id, value) VALUES (1, 'one'), (2, 'two'), (3, 
 			{
 				for (int i = 0; i < 100; i++)
 				{
-					using (var connection = new MySqlConnection(data.ConnectionStringBuilder.ConnectionString))
-					{
-						connection.Open();
-						using (var cmd = connection.CreateCommand())
-						{
-							cmd.CommandText = @"select * from dispose_reader;";
-							var reader = cmd.ExecuteReader();
-							reader.Read();
-						}
-					}
+					using var connection = new MySqlConnection(data.ConnectionStringBuilder.ConnectionString);
+					connection.Open();
+
+					using var cmd = connection.CreateCommand();
+					cmd.CommandText = @"select * from dispose_reader;";
+
+					var reader = cmd.ExecuteReader();
+					reader.Read();
 				}
 			}
 			catch (Exception ex)
@@ -731,40 +678,36 @@ insert into query_null_parameter (id, value) VALUES (1, 'one'), (2, 'two'), (3, 
 		[Fact]
 		public void InputOutputParameter()
 		{
-			using (var cmd = m_database.Connection.CreateCommand())
+			using var cmd = m_database.Connection.CreateCommand();
+			cmd.CommandText = "set @param = 1234";
+
+			cmd.Parameters.Add(new MySqlParameter
 			{
-				cmd.CommandText = "set @param = 1234";
+				ParameterName = "@param",
+				Direction = ParameterDirection.InputOutput,
+				Value = 123,
+			});
 
-				cmd.Parameters.Add(new MySqlParameter
-				{
-					ParameterName = "@param",
-					Direction = ParameterDirection.InputOutput,
-					Value = 123,
-				});
+			Assert.Throws<MySqlException>(() => cmd.ExecuteNonQuery());
 
-				Assert.Throws<MySqlException>(() => cmd.ExecuteNonQuery());
-
-				// Issue #231: Assert.Equal(1234, cmd.Parameters["@param"].Value);
-			}
+			// Issue #231: Assert.Equal(1234, cmd.Parameters["@param"].Value);
 		}
 
 		[Fact]
 		public void OutputParameter()
 		{
-			using (var cmd = m_database.Connection.CreateCommand())
+			using var cmd = m_database.Connection.CreateCommand();
+			cmd.CommandText = "set @param = 1234";
+
+			cmd.Parameters.Add(new MySqlParameter
 			{
-				cmd.CommandText = "set @param = 1234";
+				ParameterName = "@param",
+				Direction = ParameterDirection.Output,
+			});
 
-				cmd.Parameters.Add(new MySqlParameter
-				{
-					ParameterName = "@param",
-					Direction = ParameterDirection.Output,
-				});
+			Assert.Throws<MySqlException>(() => cmd.ExecuteNonQuery());
 
-				Assert.Throws<MySqlException>(() => cmd.ExecuteNonQuery());
-
-				// Issue #231: Assert.Equal(1234, cmd.Parameters["@param"].Value);
-			}
+			// Issue #231: Assert.Equal(1234, cmd.Parameters["@param"].Value);
 		}
 
 		[Fact]
@@ -778,34 +721,28 @@ insert into char_test (id, char1, char4, varchar1, varchar4) VALUES (1, '\'', 'b
 			using (var command = new MySqlCommand("select id from char_test where char1 = @ch;", m_database.Connection))
 			{
 				command.Parameters.AddWithValue("@ch", '\'');
-				using (var reader = command.ExecuteReader())
-				{
-					Assert.True(reader.Read());
-					Assert.Equal(1, reader.GetInt32(0));
-					Assert.False(reader.Read());
-				}
+				using var reader = command.ExecuteReader();
+				Assert.True(reader.Read());
+				Assert.Equal(1, reader.GetInt32(0));
+				Assert.False(reader.Read());
 			}
 
 			using (var command = new MySqlCommand("select id from char_test where char4 = @ch;", m_database.Connection))
 			{
 				command.Parameters.AddWithValue("@ch", '\\');
-				using (var reader = command.ExecuteReader())
-				{
-					Assert.True(reader.Read());
-					Assert.Equal(2, reader.GetInt32(0));
-					Assert.False(reader.Read());
-				}
+				using var reader = command.ExecuteReader();
+				Assert.True(reader.Read());
+				Assert.Equal(2, reader.GetInt32(0));
+				Assert.False(reader.Read());
 			}
 
 			using (var command = new MySqlCommand("select id from char_test where varchar1 = @ch;", m_database.Connection))
 			{
 				command.Parameters.AddWithValue("@ch", '"');
-				using (var reader = command.ExecuteReader())
-				{
-					Assert.True(reader.Read());
-					Assert.Equal(2, reader.GetInt32(0));
-					Assert.False(reader.Read());
-				}
+				using var reader = command.ExecuteReader();
+				Assert.True(reader.Read());
+				Assert.Equal(2, reader.GetInt32(0));
+				Assert.False(reader.Read());
 			}
 
 #if !BASELINE
@@ -813,12 +750,10 @@ insert into char_test (id, char1, char4, varchar1, varchar4) VALUES (1, '\'', 'b
 			using (var command = new MySqlCommand("select id from char_test where varchar4 = @ch;", m_database.Connection))
 			{
 				command.Parameters.AddWithValue("@ch", 'Σ');
-				using (var reader = command.ExecuteReader())
-				{
-					Assert.True(reader.Read());
-					Assert.Equal(1, reader.GetInt32(0));
-					Assert.False(reader.Read());
-				}
+				using var reader = command.ExecuteReader();
+				Assert.True(reader.Read());
+				Assert.Equal(1, reader.GetInt32(0));
+				Assert.False(reader.Read());
 			}
 #endif
 		}
@@ -831,17 +766,14 @@ create table enum_test(id integer not null primary key, value text not null);
 insert into enum_test (id, value) VALUES (1002, 'no'), (1003, 'yes');
 ");
 
-			using (var command = new MySqlCommand("select * from enum_test where id = @ID;", m_database.Connection))
-			{
-				command.Parameters.AddWithValue("@ID", MySqlErrorCode.No);
-				using (var reader = command.ExecuteReader())
-				{
-					Assert.True(reader.Read());
-					Assert.Equal((int) MySqlErrorCode.No, reader.GetInt32(0));
-					Assert.Equal("no", reader.GetString(1));
-					Assert.False(reader.Read());
-				}
-			}
+			using var command = new MySqlCommand("select * from enum_test where id = @ID;", m_database.Connection);
+			command.Parameters.AddWithValue("@ID", MySqlErrorCode.No);
+
+			using var reader = command.ExecuteReader();
+			Assert.True(reader.Read());
+			Assert.Equal((int) MySqlErrorCode.No, reader.GetInt32(0));
+			Assert.Equal("no", reader.GetString(1));
+			Assert.False(reader.Read());
 		}
 
 		[SkippableFact(Baseline = "https://bugs.mysql.com/bug.php?id=84701")]
@@ -852,50 +784,45 @@ create table long_enum_test(id bigint not null primary key, value integer not nu
 insert into long_enum_test (id, value) VALUES (0x7FFFFFFFFFFFFFFF, 1);
 ");
 
-			using (var command = new MySqlCommand("select * from long_enum_test where id = @ID;", m_database.Connection))
-			{
-				command.Parameters.AddWithValue("@ID", TestLongEnum.Value);
-				using (var reader = command.ExecuteReader())
-				{
-					Assert.True(reader.Read());
-					Assert.Equal(long.MaxValue, reader.GetInt64(0));
-					Assert.Equal(1, reader.GetInt32(1));
-					Assert.False(reader.Read());
-				}
-			}
+			using var command = new MySqlCommand("select * from long_enum_test where id = @ID;", m_database.Connection);
+			command.Parameters.AddWithValue("@ID", TestLongEnum.Value);
+
+			using var reader = command.ExecuteReader();
+			Assert.True(reader.Read());
+			Assert.Equal(long.MaxValue, reader.GetInt64(0));
+			Assert.Equal(1, reader.GetInt32(1));
+			Assert.False(reader.Read());
 		}
 
 		[Fact]
 		public void ReturnDerivedTypes()
 		{
-			using (MySqlTransaction transaction = m_database.Connection.BeginTransaction())
-			using (MySqlCommand command = m_database.Connection.CreateCommand())
+			using MySqlTransaction transaction = m_database.Connection.BeginTransaction();
+			using MySqlCommand command = m_database.Connection.CreateCommand();
+			command.Transaction = transaction;
+			command.CommandText = "select @param + @param2";
+
+			MySqlParameter parameter = command.CreateParameter();
+			parameter.ParameterName = "param";
+			parameter.Value = 1;
+			MySqlParameterCollection parameterCollection = command.Parameters;
+			parameterCollection.Add(parameter);
+
+			MySqlParameter parameter2 = parameterCollection.AddWithValue("param2", 2);
+
+			MySqlParameter parameterB = parameterCollection[0];
+			Assert.Same(parameter, parameterB);
+			MySqlParameter parameter2B = parameterCollection["param2"];
+			Assert.Same(parameter2, parameter2B);
+
+			using (MySqlDataReader reader = command.ExecuteReader())
 			{
-				command.Transaction = transaction;
-				command.CommandText = "select @param + @param2";
-
-				MySqlParameter parameter = command.CreateParameter();
-				parameter.ParameterName = "param";
-				parameter.Value = 1;
-				MySqlParameterCollection parameterCollection = command.Parameters;
-				parameterCollection.Add(parameter);
-
-				MySqlParameter parameter2 = parameterCollection.AddWithValue("param2", 2);
-
-				MySqlParameter parameterB = parameterCollection[0];
-				Assert.Same(parameter, parameterB);
-				MySqlParameter parameter2B = parameterCollection["param2"];
-				Assert.Same(parameter2, parameter2B);
-
-				using (MySqlDataReader reader = command.ExecuteReader())
-				{
-					Assert.True(reader.Read());
-					Assert.Equal(3L, Convert.ToInt64(reader.GetValue(0)));
-					Assert.False(reader.Read());
-				}
-
-				transaction.Rollback();
+				Assert.True(reader.Read());
+				Assert.Equal(3L, Convert.ToInt64(reader.GetValue(0)));
+				Assert.False(reader.Read());
 			}
+
+			transaction.Rollback();
 		}
 
 		[Theory]
@@ -915,21 +842,18 @@ insert into has_rows(value) values(1),(2),(3);");
 			foreach (var value in values)
 				sql += $"select * from has_rows where value = {value};";
 
-			using (var cmd = m_database.Connection.CreateCommand())
-			{
-				cmd.CommandText = sql;
-				using (var reader = cmd.ExecuteReader())
-				{
-					for (int i = 0; i < expecteds.Length; i++)
-					{
-						Assert.Equal(expecteds[i], reader.HasRows);
-						Assert.Equal(expecteds[i], reader.Read());
-						Assert.False(reader.Read());
-						Assert.Equal(expecteds[i], reader.HasRows);
+			using var cmd = m_database.Connection.CreateCommand();
+			cmd.CommandText = sql;
 
-						Assert.Equal(i != expecteds.Length - 1, reader.NextResult());
-					}
-				}
+			using var reader = cmd.ExecuteReader();
+			for (int i = 0; i < expecteds.Length; i++)
+			{
+				Assert.Equal(expecteds[i], reader.HasRows);
+				Assert.Equal(expecteds[i], reader.Read());
+				Assert.False(reader.Read());
+				Assert.Equal(expecteds[i], reader.HasRows);
+
+				Assert.Equal(i != expecteds.Length - 1, reader.NextResult());
 			}
 		}
 
@@ -940,29 +864,26 @@ insert into has_rows(value) values(1),(2),(3);");
 create table has_rows(value int not null);
 insert into has_rows(value) values(1),(2),(3);");
 
-			using (var cmd = m_database.Connection.CreateCommand())
-			{
-				cmd.CommandText = "select * from has_rows where value = 1;";
-				using (var reader = cmd.ExecuteReader())
-				{
-					Assert.True(reader.HasRows);
-					Assert.True(reader.HasRows);
-					Assert.True(reader.HasRows);
-					Assert.True(reader.HasRows);
+			using var cmd = m_database.Connection.CreateCommand();
+			cmd.CommandText = "select * from has_rows where value = 1;";
 
-					Assert.True(reader.Read());
+			using var reader = cmd.ExecuteReader();
+			Assert.True(reader.HasRows);
+			Assert.True(reader.HasRows);
+			Assert.True(reader.HasRows);
+			Assert.True(reader.HasRows);
 
-					Assert.True(reader.HasRows);
-					Assert.True(reader.HasRows);
-					Assert.True(reader.HasRows);
+			Assert.True(reader.Read());
 
-					Assert.False(reader.Read());
+			Assert.True(reader.HasRows);
+			Assert.True(reader.HasRows);
+			Assert.True(reader.HasRows);
 
-					Assert.True(reader.HasRows);
-					Assert.True(reader.HasRows);
-					Assert.True(reader.HasRows);
-				}
-			}
+			Assert.False(reader.Read());
+
+			Assert.True(reader.HasRows);
+			Assert.True(reader.HasRows);
+			Assert.True(reader.HasRows);
 		}
 
 #if !NETCOREAPP1_1_2

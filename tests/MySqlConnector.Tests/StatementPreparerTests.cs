@@ -210,34 +210,32 @@ SELECT @'var' as R")]
 			};
 
 			var preparer = new StatementPreparer(sql, parameters, StatementPreparerOptions.None);
-			using (var parsedStatements = preparer.SplitStatements())
+			using var parsedStatements = preparer.SplitStatements();
+			var splitStatements = parsedStatements.Statements;
+			Assert.Equal(expectedStatements.Length, splitStatements.Count);
+			for (var i = 0; i < splitStatements.Count; i++)
 			{
-				var splitStatements = parsedStatements.Statements;
-				Assert.Equal(expectedStatements.Length, splitStatements.Count);
-				for (var i = 0; i < splitStatements.Count; i++)
+				var parsedSql = Encoding.UTF8.GetString(splitStatements[i].StatementBytes.Slice(1));
+				Assert.Equal(expectedStatements[i], parsedSql);
+
+				var expectedParameterNamesOrIndexes = expectedStatementParameters[i].Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+				var expectedParameterIndexes = new int[expectedParameterNamesOrIndexes.Length];
+				var expectedParameterNames = new string[expectedParameterNamesOrIndexes.Length];
+				for (var j = 0; j < expectedParameterNamesOrIndexes.Length; j++)
 				{
-					var parsedSql = Encoding.UTF8.GetString(splitStatements[i].StatementBytes.Slice(1));
-					Assert.Equal(expectedStatements[i], parsedSql);
-
-					var expectedParameterNamesOrIndexes = expectedStatementParameters[i].Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
-					var expectedParameterIndexes = new int[expectedParameterNamesOrIndexes.Length];
-					var expectedParameterNames = new string[expectedParameterNamesOrIndexes.Length];
-					for (var j = 0; j < expectedParameterNamesOrIndexes.Length; j++)
+					if (expectedParameterNamesOrIndexes[j][0] == '@')
 					{
-						if (expectedParameterNamesOrIndexes[j][0] == '@')
-						{
-							expectedParameterNames[j] = expectedParameterNamesOrIndexes[j];
-							expectedParameterIndexes[j] = -1;
-						}
-						else
-						{
-							expectedParameterIndexes[j] = int.Parse(expectedParameterNamesOrIndexes[j], CultureInfo.InvariantCulture);
-						}
+						expectedParameterNames[j] = expectedParameterNamesOrIndexes[j];
+						expectedParameterIndexes[j] = -1;
 					}
-
-					Assert.Equal(expectedParameterIndexes, splitStatements[i].ParameterIndexes);
-					Assert.Equal(expectedParameterNames, splitStatements[i].ParameterNames);
+					else
+					{
+						expectedParameterIndexes[j] = int.Parse(expectedParameterNamesOrIndexes[j], CultureInfo.InvariantCulture);
+					}
 				}
+
+				Assert.Equal(expectedParameterIndexes, splitStatements[i].ParameterIndexes);
+				Assert.Equal(expectedParameterNames, splitStatements[i].ParameterNames);
 			}
 		}
 

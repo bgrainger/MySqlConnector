@@ -47,12 +47,10 @@ insert into update_rows_reader (value) VALUES (1), (2), (1), (4);
 				p.Value = 4;
 				cmd.Parameters.Add(p);
 
-				using (var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false))
-				{
-					Assert.False(await reader.ReadAsync().ConfigureAwait(false));
-					Assert.Equal(expectedRowsUpdated, reader.RecordsAffected);
-					Assert.False(await reader.NextResultAsync().ConfigureAwait(false));
-				}
+				using var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
+				Assert.False(await reader.ReadAsync().ConfigureAwait(false));
+				Assert.Equal(expectedRowsUpdated, reader.RecordsAffected);
+				Assert.False(await reader.NextResultAsync().ConfigureAwait(false));
 			}
 		}
 

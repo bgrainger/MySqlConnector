@@ -18,15 +18,13 @@ namespace SideBySide
 		[Fact]
 		public void MaxLength()
 		{
-			using (var reader = m_database.Connection.ExecuteReader(@"select coll.ID, cs.MAXLEN from information_schema.collations coll inner join information_schema.character_sets cs using(CHARACTER_SET_NAME);"))
+			using var reader = m_database.Connection.ExecuteReader(@"select coll.ID, cs.MAXLEN from information_schema.collations coll inner join information_schema.character_sets cs using(CHARACTER_SET_NAME);");
+			while (reader.Read())
 			{
-				while (reader.Read())
-				{
-					var characterSet = (CharacterSet) reader.GetInt32(0);
-					var maxLength = reader.GetInt32(1);
+				var characterSet = (CharacterSet) reader.GetInt32(0);
+				var maxLength = reader.GetInt32(1);
 
-					Assert.Equal(maxLength, ProtocolUtility.GetBytesPerCharacter(characterSet));
-				}
+				Assert.Equal(maxLength, ProtocolUtility.GetBytesPerCharacter(characterSet));
 			}
 		}
 #endif

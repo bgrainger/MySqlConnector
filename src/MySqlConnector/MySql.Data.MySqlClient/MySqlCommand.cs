@@ -273,16 +273,14 @@ namespace MySql.Data.MySqlClient
 		internal async Task<int> ExecuteNonQueryAsync(IOBehavior ioBehavior, CancellationToken cancellationToken)
 		{
 			ResetCommandTimeout();
-			using (var reader = (MySqlDataReader) await ExecuteReaderAsync(CommandBehavior.Default, ioBehavior, cancellationToken).ConfigureAwait(false))
+			using var reader = (MySqlDataReader) await ExecuteReaderAsync(CommandBehavior.Default, ioBehavior, cancellationToken).ConfigureAwait(false);
+			do
 			{
-				do
+				while (await reader.ReadAsync(ioBehavior, cancellationToken).ConfigureAwait(false))
 				{
-					while (await reader.ReadAsync(ioBehavior, cancellationToken).ConfigureAwait(false))
-					{
-					}
-				} while (await reader.NextResultAsync(ioBehavior, cancellationToken).ConfigureAwait(false));
-				return reader.RecordsAffected;
-			}
+				}
+			} while (await reader.NextResultAsync(ioBehavior, cancellationToken).ConfigureAwait(false));
+			return reader.RecordsAffected;
 		}
 
 		public override Task<object> ExecuteScalarAsync(CancellationToken cancellationToken) =>
@@ -293,19 +291,17 @@ namespace MySql.Data.MySqlClient
 			ResetCommandTimeout();
 			var hasSetResult = false;
 			object result = null;
-			using (var reader = (MySqlDataReader) await ExecuteReaderAsync(CommandBehavior.SingleResult | CommandBehavior.SingleRow, ioBehavior, cancellationToken).ConfigureAwait(false))
+			using var reader = (MySqlDataReader) await ExecuteReaderAsync(CommandBehavior.SingleResult | CommandBehavior.SingleRow, ioBehavior, cancellationToken).ConfigureAwait(false);
+			do
 			{
-				do
+				var hasResult = await reader.ReadAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
+				if (!hasSetResult)
 				{
-					var hasResult = await reader.ReadAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
-					if (!hasSetResult)
-					{
-						if (hasResult)
-							result = reader.GetValue(0);
-						hasSetResult = true;
-					}
-				} while (await reader.NextResultAsync(ioBehavior, cancellationToken).ConfigureAwait(false));
-			}
+					if (hasResult)
+						result = reader.GetValue(0);
+					hasSetResult = true;
+				}
+			} while (await reader.NextResultAsync(ioBehavior, cancellationToken).ConfigureAwait(false));
 			return result;
 		}
 

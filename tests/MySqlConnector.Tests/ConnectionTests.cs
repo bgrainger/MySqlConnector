@@ -52,16 +52,14 @@ namespace MySqlConnector.Tests
 			Assert.Equal(0, m_server.ActiveConnections);
 
 			m_csb.Pooling = false;
-			using (var connection = new MySqlConnection(m_csb.ConnectionString))
-			{
-				await connection.OpenAsync();
-				Assert.Equal(1, m_server.ActiveConnections);
+			using var connection = new MySqlConnection(m_csb.ConnectionString);
+			await connection.OpenAsync();
+			Assert.Equal(1, m_server.ActiveConnections);
 
-				Assert.Equal(m_server.ServerVersion, connection.ServerVersion);
-				connection.Close();
+			Assert.Equal(m_server.ServerVersion, connection.ServerVersion);
+			connection.Close();
 
-				await WaitForConditionAsync(0, () => m_server.ActiveConnections);
-			}
+			await WaitForConditionAsync(0, () => m_server.ActiveConnections);
 		}
 
 		[Theory]
@@ -98,11 +96,9 @@ namespace MySqlConnector.Tests
 		public async Task MinimumPoolSize(int size)
 		{
 			m_csb.MinimumPoolSize = (uint) size;
-			using (var connection = new MySqlConnection(m_csb.ConnectionString))
-			{
-				await connection.OpenAsync();
-				Assert.Equal(size, m_server.ActiveConnections);
-			}
+			using var connection = new MySqlConnection(m_csb.ConnectionString);
+			await connection.OpenAsync();
+			Assert.Equal(size, m_server.ActiveConnections);
 		}
 
 		[Fact]
@@ -135,46 +131,38 @@ namespace MySqlConnector.Tests
 		public void AuthPluginNameNotNullTerminated()
 		{
 			m_server.SuppressAuthPluginNameTerminatingNull = true;
-			using (var connection = new MySqlConnection(m_csb.ConnectionString))
-			{
-				connection.Open();
-				Assert.Equal(ConnectionState.Open, connection.State);
-			}
+			using var connection = new MySqlConnection(m_csb.ConnectionString);
+			connection.Open();
+			Assert.Equal(ConnectionState.Open, connection.State);
 		}
 
 		[Fact]
 		public void IncompleteServerHandshake()
 		{
 			m_server.SendIncompletePostHandshakeResponse = true;
-			using (var connection = new MySqlConnection(m_csb.ConnectionString))
-			{
-				Assert.Throws<MySqlException>(() => connection.Open());
-			}
+			using var connection = new MySqlConnection(m_csb.ConnectionString);
+			Assert.Throws<MySqlException>(() => connection.Open());
 		}
 
 		[Fact]
 		public void Ping()
 		{
-			using (var connection = new MySqlConnection(m_csb.ConnectionString))
-			{
-				connection.Open();
-				Assert.Equal(ConnectionState.Open, connection.State);
-				Assert.True(connection.Ping());
-				Assert.Equal(ConnectionState.Open, connection.State);
-			}
+			using var connection = new MySqlConnection(m_csb.ConnectionString);
+			connection.Open();
+			Assert.Equal(ConnectionState.Open, connection.State);
+			Assert.True(connection.Ping());
+			Assert.Equal(ConnectionState.Open, connection.State);
 		}
 
 		[Fact]
 		public void PingWhenClosed()
 		{
-			using (var connection = new MySqlConnection(m_csb.ConnectionString))
-			{
-				connection.Open();
-				Assert.Equal(ConnectionState.Open, connection.State);
-				m_server.Stop();
-				Assert.False(connection.Ping());
-				Assert.Equal(ConnectionState.Closed, connection.State);
-			}
+			using var connection = new MySqlConnection(m_csb.ConnectionString);
+			connection.Open();
+			Assert.Equal(ConnectionState.Open, connection.State);
+			m_server.Stop();
+			Assert.False(connection.Ping());
+			Assert.Equal(ConnectionState.Closed, connection.State);
 		}
 
 		private static async Task WaitForConditionAsync<T>(T expected, Func<T> getValue)

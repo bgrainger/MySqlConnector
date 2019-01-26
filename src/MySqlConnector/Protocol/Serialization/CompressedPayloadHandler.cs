@@ -39,8 +39,8 @@ namespace MySqlConnector.Protocol.Serialization
 
 		public ValueTask<ArraySegment<byte>> ReadPayloadAsync(ArraySegmentHolder<byte> cache, ProtocolErrorBehavior protocolErrorBehavior, IOBehavior ioBehavior)
 		{
-			using (var compressedByteHandler = new CompressedByteHandler(this, protocolErrorBehavior))
-				return ProtocolUtility.ReadPayloadAsync(m_bufferedByteReader, compressedByteHandler, () => -1, cache, protocolErrorBehavior, ioBehavior);
+			using var compressedByteHandler = new CompressedByteHandler(this, protocolErrorBehavior);
+			return ProtocolUtility.ReadPayloadAsync(m_bufferedByteReader, compressedByteHandler, () => -1, cache, protocolErrorBehavior, ioBehavior);
 		}
 
 		public ValueTask<int> WritePayloadAsync(ArraySegment<byte> payload, IOBehavior ioBehavior)
@@ -146,23 +146,21 @@ namespace MySqlConnector.Protocol.Serialization
 								const int headerSize = 2;
 								const int checksumSize = 4;
 								var uncompressedData = new byte[uncompressedLength];
-								using (var compressedStream = new MemoryStream(payloadReadBytes.Array, payloadReadBytes.Offset + headerSize, payloadReadBytes.Count - headerSize - checksumSize))
-								using (var decompressingStream = new DeflateStream(compressedStream, CompressionMode.Decompress))
-								{
-									var bytesRead = decompressingStream.Read(uncompressedData, 0, uncompressedLength);
-									m_remainingData = new ArraySegment<byte>(uncompressedData, 0, bytesRead);
+								using var compressedStream = new MemoryStream(payloadReadBytes.Array, payloadReadBytes.Offset + headerSize, payloadReadBytes.Count - headerSize - checksumSize);
+								using var decompressingStream = new DeflateStream(compressedStream, CompressionMode.Decompress);
+								var bytesRead = decompressingStream.Read(uncompressedData, 0, uncompressedLength);
+								m_remainingData = new ArraySegment<byte>(uncompressedData, 0, bytesRead);
 
-									var checksum = ComputeAdler32Checksum(uncompressedData, 0, bytesRead);
-									int adlerStartOffset = payloadReadBytes.Offset + payloadReadBytes.Count - 4;
-									if (payloadReadBytes.Array[adlerStartOffset + 0] != ((checksum >> 24) & 0xFF) ||
-									    payloadReadBytes.Array[adlerStartOffset + 1] != ((checksum >> 16) & 0xFF) ||
-									    payloadReadBytes.Array[adlerStartOffset + 2] != ((checksum >> 8) & 0xFF) ||
-									    payloadReadBytes.Array[adlerStartOffset + 3] != (checksum & 0xFF))
-									{
-										return protocolErrorBehavior == ProtocolErrorBehavior.Ignore ?
-											default(ValueTask<int>) :
-											ValueTaskExtensions.FromException<int>(new NotSupportedException("Invalid Adler-32 checksum of uncompressed data."));
-									}
+								var checksum = ComputeAdler32Checksum(uncompressedData, 0, bytesRead);
+								int adlerStartOffset = payloadReadBytes.Offset + payloadReadBytes.Count - 4;
+								if (payloadReadBytes.Array[adlerStartOffset + 0] != ((checksum >> 24) & 0xFF) ||
+									payloadReadBytes.Array[adlerStartOffset + 1] != ((checksum >> 16) & 0xFF) ||
+									payloadReadBytes.Array[adlerStartOffset + 2] != ((checksum >> 8) & 0xFF) ||
+									payloadReadBytes.Array[adlerStartOffset + 3] != (checksum & 0xFF))
+								{
+									return protocolErrorBehavior == ProtocolErrorBehavior.Ignore ?
+										default(ValueTask<int>) :
+										ValueTaskExtensions.FromException<int>(new NotSupportedException("Invalid Adler-32 checksum of uncompressed data."));
 								}
 							}
 
@@ -187,27 +185,26 @@ namespace MySqlConnector.Protocol.Serialization
 			var compressedData = default(ArraySegment<byte>);
 			if (remainingUncompressedBytes > 80)
 			{
-				using (var compressedStream = new MemoryStream())
-				{
-					// write CMF: 32K window + deflate algorithm
-					compressedStream.WriteByte(0x78);
+				using var compressedStream = new MemoryStream();
 
-					// write FLG: maximum compression + checksum
-					compressedStream.WriteByte(0xDA);
+				// write CMF: 32K window + deflate algorithm
+				compressedStream.WriteByte(0x78);
 
-					using (var deflateStream = new DeflateStream(compressedStream, CompressionLevel.Optimal, leaveOpen: true))
-						deflateStream.Write(remainingUncompressedData.Array, remainingUncompressedData.Offset, remainingUncompressedBytes);
+				// write FLG: maximum compression + checksum
+				compressedStream.WriteByte(0xDA);
 
-					// write Adler-32 checksum to stream
-					var checksum = ComputeAdler32Checksum(remainingUncompressedData.Array, remainingUncompressedData.Offset, remainingUncompressedBytes);
-					compressedStream.WriteByte((byte) ((checksum >> 24) & 0xFF));
-					compressedStream.WriteByte((byte) ((checksum >> 16) & 0xFF));
-					compressedStream.WriteByte((byte) ((checksum >> 8) & 0xFF));
-					compressedStream.WriteByte((byte) (checksum & 0xFF));
+				using (var deflateStream = new DeflateStream(compressedStream, CompressionLevel.Optimal, leaveOpen: true))
+					deflateStream.Write(remainingUncompressedData.Array, remainingUncompressedData.Offset, remainingUncompressedBytes);
 
-					if (!compressedStream.TryGetBuffer(out compressedData))
-						throw new InvalidOperationException("Couldn't get compressed stream buffer.");
-				}
+				// write Adler-32 checksum to stream
+				var checksum = ComputeAdler32Checksum(remainingUncompressedData.Array, remainingUncompressedData.Offset, remainingUncompressedBytes);
+				compressedStream.WriteByte((byte) ((checksum >> 24) & 0xFF));
+				compressedStream.WriteByte((byte) ((checksum >> 16) & 0xFF));
+				compressedStream.WriteByte((byte) ((checksum >> 8) & 0xFF));
+				compressedStream.WriteByte((byte) (checksum & 0xFF));
+
+				if (!compressedStream.TryGetBuffer(out compressedData))
+					throw new InvalidOperationException("Couldn't get compressed stream buffer.");
 			}
 
 			uint uncompressedLength = (uint) remainingUncompressedBytes;

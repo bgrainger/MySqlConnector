@@ -68,17 +68,15 @@ namespace MySqlConnector.Core
 								&& !localInfile.FileName.StartsWith(MySqlBulkLoader.StreamPrefix, StringComparison.Ordinal))
 								throw new NotSupportedException("Use SourceStream or SslMode >= VerifyCA for LOAD DATA LOCAL INFILE");
 
-							using (var stream = localInfile.FileName.StartsWith(MySqlBulkLoader.StreamPrefix, StringComparison.Ordinal) ?
+							using var stream = localInfile.FileName.StartsWith(MySqlBulkLoader.StreamPrefix, StringComparison.Ordinal) ?
 								MySqlBulkLoader.GetAndRemoveStream(localInfile.FileName) :
-								File.OpenRead(localInfile.FileName))
+								File.OpenRead(localInfile.FileName);
+							var readBuffer = new byte[65536];
+							int byteCount;
+							while ((byteCount = await stream.ReadAsync(readBuffer, 0, readBuffer.Length).ConfigureAwait(false)) > 0)
 							{
-								byte[] readBuffer = new byte[65536];
-								int byteCount;
-								while ((byteCount = await stream.ReadAsync(readBuffer, 0, readBuffer.Length).ConfigureAwait(false)) > 0)
-								{
-									payload = new PayloadData(new ArraySegment<byte>(readBuffer, 0, byteCount));
-									await Session.SendReplyAsync(payload, ioBehavior, CancellationToken.None).ConfigureAwait(false);
-								}
+								payload = new PayloadData(new ArraySegment<byte>(readBuffer, 0, byteCount));
+								await Session.SendReplyAsync(payload, ioBehavior, CancellationToken.None).ConfigureAwait(false);
 							}
 						}
 						catch (Exception ex)

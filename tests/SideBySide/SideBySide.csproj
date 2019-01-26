@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
  <PropertyGroup Condition=" '$(Configuration)' != 'Baseline' ">
     <TargetFrameworks>net452;net461;net472;netcoreapp1.1.2;netcoreapp2.0;netcoreapp2.1</TargetFrameworks>
@@ -21,6 +21,7 @@
     <ServerGarbageCollection>true</ServerGarbageCollection>
     <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
     <ThreadPoolMinThreads>64</ThreadPoolMinThreads>
+   <LangVersion>8.0</LangVersion>
   </PropertyGroup>
 
  <ItemGroup>

@@ -16,47 +16,43 @@ namespace SideBySide
 		[SkippableFact(Baseline = "Parameter '@data' was not found during prepare.")]
 		public void PrepareBeforeBindingParameters()
 		{
-			using (var connection = CreatePrepareConnection())
-			{
-				connection.Execute($@"DROP TABLE IF EXISTS bind_parameters_test;
+			using var connection = CreatePrepareConnection();
+			connection.Execute($@"DROP TABLE IF EXISTS bind_parameters_test;
 CREATE TABLE bind_parameters_test(data TEXT NOT NULL);");
 
-				using (var command = new MySqlCommand(@"INSERT INTO bind_parameters_test(data) VALUES(@data);", connection))
-				{
-					command.Prepare();
-					command.Parameters.AddWithValue("@data", "test");
-					command.ExecuteNonQuery();
-				}
-
-				Assert.Equal(new[] { "test" }, connection.Query<string>("SELECT data FROM bind_parameters_test;"));
+			using (var command = new MySqlCommand(@"INSERT INTO bind_parameters_test(data) VALUES(@data);", connection))
+			{
+				command.Prepare();
+				command.Parameters.AddWithValue("@data", "test");
+				command.ExecuteNonQuery();
 			}
+
+			Assert.Equal(new[] { "test" }, connection.Query<string>("SELECT data FROM bind_parameters_test;"));
 		}
 
 		[SkippableFact(Baseline = "https://bugs.mysql.com/bug.php?id=91753")]
 		public void UnnamedParameters()
 		{
-			using (var connection = CreatePrepareConnection())
-			{
-				connection.Execute($@"DROP TABLE IF EXISTS bind_parameters_test;
+			using var connection = CreatePrepareConnection();
+			connection.Execute($@"DROP TABLE IF EXISTS bind_parameters_test;
 CREATE TABLE bind_parameters_test(data1 TEXT NOT NULL, data2 INTEGER);");
 
-				using (var command = new MySqlCommand(@"INSERT INTO bind_parameters_test(data1, data2) VALUES(?, ?);", connection))
-				{
-					command.Parameters.Add(new MySqlParameter { Value = "test" });
-					command.Parameters.Add(new MySqlParameter { Value = 1234 });
-					command.Prepare();
-					command.ExecuteNonQuery();
-				}
+			using (var command = new MySqlCommand(@"INSERT INTO bind_parameters_test(data1, data2) VALUES(?, ?);", connection))
+			{
+				command.Parameters.Add(new MySqlParameter { Value = "test" });
+				command.Parameters.Add(new MySqlParameter { Value = 1234 });
+				command.Prepare();
+				command.ExecuteNonQuery();
+			}
 
-				using (var command = new MySqlCommand(@"SELECT data1, data2 FROM bind_parameters_test;", connection))
+			using (var command = new MySqlCommand(@"SELECT data1, data2 FROM bind_parameters_test;", connection))
+			{
+				command.Prepare();
+				using (var reader = command.ExecuteReader())
 				{
-					command.Prepare();
-					using (var reader = command.ExecuteReader())
-					{
-						Assert.True(reader.Read());
-						Assert.Equal("test", reader.GetValue(0));
-						Assert.Equal(1234, reader.GetValue(1));
-					}
+					Assert.True(reader.Read());
+					Assert.Equal("test", reader.GetValue(0));
+					Assert.Equal(1234, reader.GetValue(1));
 				}
 			}
 		}
@@ -64,26 +60,24 @@ CREATE TABLE bind_parameters_test(data1 TEXT NOT NULL, data2 INTEGER);");
 		[Fact]
 		public void ReuseCommand()
 		{
-			using (var connection = CreatePrepareConnection())
-			{
-				connection.Execute($@"DROP TABLE IF EXISTS reuse_command_test;
+			using var connection = CreatePrepareConnection();
+			connection.Execute($@"DROP TABLE IF EXISTS reuse_command_test;
 CREATE TABLE reuse_command_test(rowid INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT, data TEXT NOT NULL);");
 
-				using (var command = new MySqlCommand(@"INSERT INTO reuse_command_test(data) VALUES(@data);", connection))
+			using (var command = new MySqlCommand(@"INSERT INTO reuse_command_test(data) VALUES(@data);", connection))
+			{
+				// work around Connector/NET failure; see PrepareBeforeBindingParameters
+				var parameter = command.Parameters.AddWithValue("@data", "");
+				command.Prepare();
+
+				foreach (var value in new[] { "one", "two", "three" })
 				{
-					// work around Connector/NET failure; see PrepareBeforeBindingParameters
-					var parameter = command.Parameters.AddWithValue("@data", "");
-					command.Prepare();
-
-					foreach (var value in new[] { "one", "two", "three" })
-					{
-						parameter.Value = value;
-						command.ExecuteNonQuery();
-					}
+					parameter.Value = value;
+					command.ExecuteNonQuery();
 				}
-
-				Assert.Equal(new[] { "one", "two", "three" }, connection.Query<string>("SELECT data FROM reuse_command_test ORDER BY rowid;"));
 			}
+
+			Assert.Equal(new[] { "one", "two", "three" }, connection.Query<string>("SELECT data FROM reuse_command_test ORDER BY rowid;"));
 		}
 
 		[Theory]
@@ -94,131 +88,114 @@ CREATE TABLE reuse_command_test(rowid INTEGER NOT NULL PRIMARY KEY AUTO_INCREMEN
 			{
 				IgnorePrepare = !isPrepared,
 			};
-			using (var connection = new MySqlConnection(csb.ConnectionString))
-			{
-				connection.Open();
-				connection.Execute($@"DROP TABLE IF EXISTS prepared_command_test;
+			using var connection = new MySqlConnection(csb.ConnectionString);
+			connection.Open();
+			connection.Execute($@"DROP TABLE IF EXISTS prepared_command_test;
 CREATE TABLE prepared_command_test(rowid INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT, data {dataType});");
 
-				using (var command = new MySqlCommand("INSERT INTO prepared_command_test(data) VALUES(@null), (@data);", connection))
-				{
-					command.Parameters.AddWithValue("@null", null);
-					command.Parameters.AddWithValue("@data", dataValue);
-					if (isPrepared)
-						command.Prepare();
-					Assert.Equal(isPrepared, command.IsPrepared);
-					command.ExecuteNonQuery();
-				}
+			using (var command = new MySqlCommand("INSERT INTO prepared_command_test(data) VALUES(@null), (@data);", connection))
+			{
+				command.Parameters.AddWithValue("@null", null);
+				command.Parameters.AddWithValue("@data", dataValue);
+				if (isPrepared)
+					command.Prepare();
+				Assert.Equal(isPrepared, command.IsPrepared);
+				command.ExecuteNonQuery();
+			}
 
-				using (var command = new MySqlCommand("SELECT data FROM prepared_command_test ORDER BY rowid;", connection))
-				{
-					if (isPrepared)
-						command.Prepare();
-					Assert.Equal(isPrepared, command.IsPrepared);
+			using (var command = new MySqlCommand("SELECT data FROM prepared_command_test ORDER BY rowid;", connection))
+			{
+				if (isPrepared)
+					command.Prepare();
+				Assert.Equal(isPrepared, command.IsPrepared);
 
-					using (var reader = command.ExecuteReader())
-					{
-						Assert.True(reader.Read());
-						Assert.True(reader.IsDBNull(0));
+				using var reader = command.ExecuteReader();
+				Assert.True(reader.Read());
+				Assert.True(reader.IsDBNull(0));
 
-						Assert.True(reader.Read());
-						Assert.False(reader.IsDBNull(0));
-						Assert.Equal(dataValue, reader.GetValue(0));
+				Assert.True(reader.Read());
+				Assert.False(reader.IsDBNull(0));
+				Assert.Equal(dataValue, reader.GetValue(0));
 
-						Assert.False(reader.Read());
-						Assert.False(reader.NextResult());
-					}
-				}
+				Assert.False(reader.Read());
+				Assert.False(reader.NextResult());
 			}
 		}
 
 		[Fact]
 		public void PrepareMultipleTimes()
 		{
-			using (var connection = CreatePrepareConnection())
-			{
-				using (var cmd = new MySqlCommand("SELECT 'test';", connection))
-				{
-					Assert.False(cmd.IsPrepared);
-					cmd.Prepare();
-					Assert.True(cmd.IsPrepared);
-					cmd.Prepare();
-					Assert.Equal("test", cmd.ExecuteScalar());
-				}
-			}
+			using var connection = CreatePrepareConnection();
+			using var cmd = new MySqlCommand("SELECT 'test';", connection);
+			Assert.False(cmd.IsPrepared);
+			cmd.Prepare();
+			Assert.True(cmd.IsPrepared);
+			cmd.Prepare();
+			Assert.Equal("test", cmd.ExecuteScalar());
 		}
 
 		[SkippableFact(Baseline = "Connector/NET doesn't cache prepared commands")]
 		public void PreparedCommandIsCached()
 		{
-			using (var connection = CreatePrepareConnection())
-			{
-				using (var cmd = new MySqlCommand("SELECT 'test';", connection))
-				{
-					cmd.Prepare();
-					Assert.Equal("test", cmd.ExecuteScalar());
-				}
+			using var connection = CreatePrepareConnection();
 
-				using (var cmd = new MySqlCommand("SELECT 'test';", connection))
-				{
-					Assert.True(cmd.IsPrepared);
-					Assert.Equal("test", cmd.ExecuteScalar());
-				}
+			using (var cmd = new MySqlCommand("SELECT 'test';", connection))
+			{
+				cmd.Prepare();
+				Assert.Equal("test", cmd.ExecuteScalar());
+			}
+
+			using (var cmd = new MySqlCommand("SELECT 'test';", connection))
+			{
+				Assert.True(cmd.IsPrepared);
+				Assert.Equal("test", cmd.ExecuteScalar());
 			}
 		}
 
 		[Fact]
 		public void ThrowsIfNamedParameterUsedButNoParametersDefined()
 		{
-			using (var connection = CreatePrepareConnection())
-			using (var cmd = new MySqlCommand("SELECT @param;", connection))
-			{
+			using var connection = CreatePrepareConnection();
+			using var cmd = new MySqlCommand("SELECT @param;", connection);
 #if BASELINE
-				Assert.Throws<InvalidOperationException>(() => cmd.Prepare());
+			Assert.Throws<InvalidOperationException>(() => cmd.Prepare());
 #else
-				cmd.Prepare();
-				Assert.Throws<MySqlException>(() => cmd.ExecuteScalar());
+			cmd.Prepare();
+			Assert.Throws<MySqlException>(() => cmd.ExecuteScalar());
 #endif
-			}
 		}
 
 		[Fact]
 		public void ThrowsIfUnnamedParameterUsedButNoParametersDefined()
 		{
-			using (var connection = CreatePrepareConnection())
-			using (var cmd = new MySqlCommand("SELECT ?;", connection))
-			{
-				cmd.Prepare();
-				Assert.Throws<MySqlException>(() => cmd.ExecuteScalar());
-			}
+			using var connection = CreatePrepareConnection();
+			using var cmd = new MySqlCommand("SELECT ?;", connection);
+			cmd.Prepare();
+			Assert.Throws<MySqlException>(() => cmd.ExecuteScalar());
 		}
 
 		[Fact]
 		public void ThrowsIfUndefinedNamedParameterUsed()
 		{
-			using (var connection = CreatePrepareConnection())
-			using (var cmd = new MySqlCommand("SELECT @param;", connection))
-			{
-				cmd.Parameters.AddWithValue("@name", "test");
+			using var connection = CreatePrepareConnection();
+			using var cmd = new MySqlCommand("SELECT @param;", connection);
+			cmd.Parameters.AddWithValue("@name", "test");
 #if BASELINE
-				Assert.Throws<InvalidOperationException>(() => cmd.Prepare());
+			Assert.Throws<InvalidOperationException>(() => cmd.Prepare());
 #else
-				cmd.Prepare();
-				Assert.Throws<MySqlException>(() => cmd.ExecuteScalar());
+			cmd.Prepare();
+			Assert.Throws<MySqlException>(() => cmd.ExecuteScalar());
 #endif
-			}
 		}
 
 		[Fact]
 		public void ThrowsIfTooManyUnnamedParametersUsed()
 		{
-			using (var connection = CreatePrepareConnection())
-			using (var cmd = new MySqlCommand("SELECT ?, ?;", connection))
-			{
-				cmd.Parameters.Add(new MySqlParameter { Value = 1 });
-				cmd.Prepare();
-				Assert.Throws<MySqlException>(() => cmd.ExecuteScalar());
-			}
+			using var connection = CreatePrepareConnection();
+			using var cmd = new MySqlCommand("SELECT ?, ?;", connection);
+			cmd.Parameters.Add(new MySqlParameter { Value = 1 });
+			cmd.Prepare();
+			Assert.Throws<MySqlException>(() => cmd.ExecuteScalar());
 		}
 
 		[Theory]
@@ -243,38 +220,32 @@ CREATE TABLE prepared_command_test(rowid INTEGER NOT NULL PRIMARY KEY AUTO_INCRE
 		[InlineData(65535)]
 		public void ParametersAreBound(int parameterCount)
 		{
-			using (var connection = CreateConnectionWithTableOfIntegers())
-			using (var cmd = CreateCommandWithParameters(connection, parameterCount))
-			{
-				cmd.Prepare();
+			using var connection = CreateConnectionWithTableOfIntegers();
+			using var cmd = CreateCommandWithParameters(connection, parameterCount);
+			cmd.Prepare();
 
-				using (var reader = cmd.ExecuteReader())
-				{
-					for (var i = 1; i <= Math.Min(parameterCount, 10); i++)
-					{
-						Assert.True(reader.Read());
-						Assert.Equal(i, reader.GetInt32(0));
-					}
-					Assert.False(reader.Read());
-				}
+			using var reader = cmd.ExecuteReader();
+			for (var i = 1; i <= Math.Min(parameterCount, 10); i++)
+			{
+				Assert.True(reader.Read());
+				Assert.Equal(i, reader.GetInt32(0));
 			}
+			Assert.False(reader.Read());
 		}
 
 		[Fact]
 		public void CannotUse64KParameters()
 		{
-			using (var connection = CreateConnectionWithTableOfIntegers())
-			using (var cmd = CreateCommandWithParameters(connection, 65536))
+			using var connection = CreateConnectionWithTableOfIntegers();
+			using var cmd = CreateCommandWithParameters(connection, 65536);
+			try
 			{
-				try
-				{
-					cmd.Prepare();
-					Assert.False(true, "Exception wasn't thrown");
-				}
-				catch (MySqlException ex)
-				{
-					Assert.Equal(MySqlErrorCode.PreparedStatementManyParameters, (MySqlErrorCode) ex.Number);
-				}
+				cmd.Prepare();
+				Assert.False(true, "Exception wasn't thrown");
+			}
+			catch (MySqlException ex)
+			{
+				Assert.Equal(MySqlErrorCode.PreparedStatementManyParameters, (MySqlErrorCode) ex.Number);
 			}
 		}
 

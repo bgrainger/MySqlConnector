@@ -19,23 +19,21 @@ namespace MySqlConnector.Protocol.Serialization
 		/// <remarks>See <a href="https://dev.mysql.com/doc/internals/en/secure-password-authentication.html">Secure Password Authentication</a>.</remarks>
 		public static byte[] HashPassword(byte[] challenge, int offset, string password)
 		{
-			using (var sha1 = SHA1.Create())
-			{
-				var combined = new byte[40];
-				Buffer.BlockCopy(challenge, offset, combined, 0, 20);
+			using var sha1 = SHA1.Create();
+			var combined = new byte[40];
+			Buffer.BlockCopy(challenge, offset, combined, 0, 20);
 
-				var passwordBytes = Encoding.UTF8.GetBytes(password);
-				var hashedPassword = sha1.ComputeHash(passwordBytes);
+			var passwordBytes = Encoding.UTF8.GetBytes(password);
+			var hashedPassword = sha1.ComputeHash(passwordBytes);
 
-				var doubleHashedPassword = sha1.ComputeHash(hashedPassword);
-				Buffer.BlockCopy(doubleHashedPassword, 0, combined, 20, 20);
+			var doubleHashedPassword = sha1.ComputeHash(hashedPassword);
+			Buffer.BlockCopy(doubleHashedPassword, 0, combined, 20, 20);
 
-				var xorBytes = sha1.ComputeHash(combined);
-				for (int i = 0; i < hashedPassword.Length; i++)
-					hashedPassword[i] ^= xorBytes[i];
+			var xorBytes = sha1.ComputeHash(combined);
+			for (int i = 0; i < hashedPassword.Length; i++)
+				hashedPassword[i] ^= xorBytes[i];
 
-				return hashedPassword;
-			}
+			return hashedPassword;
 		}
 
 		static readonly byte[] s_emptyArray = new byte[0];
@@ -51,23 +49,21 @@ namespace MySqlConnector.Protocol.Serialization
 
 		private static byte[] HashPasswordWithNonce(byte[] nonce, string password)
 		{
-			using (var sha256 = SHA256.Create())
-			{
-				var passwordBytes = Encoding.UTF8.GetBytes(password);
-				var hashedPassword = sha256.ComputeHash(passwordBytes);
+			using var sha256 = SHA256.Create();
+			var passwordBytes = Encoding.UTF8.GetBytes(password);
+			var hashedPassword = sha256.ComputeHash(passwordBytes);
 
-				var doubleHashedPassword = sha256.ComputeHash(hashedPassword);
-				var combined = new byte[doubleHashedPassword.Length + nonce.Length];
+			var doubleHashedPassword = sha256.ComputeHash(hashedPassword);
+			var combined = new byte[doubleHashedPassword.Length + nonce.Length];
 
-				Buffer.BlockCopy(doubleHashedPassword, 0, combined, 0, doubleHashedPassword.Length);
-				Buffer.BlockCopy(nonce, 0, combined, doubleHashedPassword.Length, nonce.Length);
+			Buffer.BlockCopy(doubleHashedPassword, 0, combined, 0, doubleHashedPassword.Length);
+			Buffer.BlockCopy(nonce, 0, combined, doubleHashedPassword.Length, nonce.Length);
 
-				var xorBytes = sha256.ComputeHash(combined);
-				for (int i = 0; i < hashedPassword.Length; i++)
-					hashedPassword[i] ^= xorBytes[i];
+			var xorBytes = sha256.ComputeHash(combined);
+			for (int i = 0; i < hashedPassword.Length; i++)
+				hashedPassword[i] ^= xorBytes[i];
 
-				return hashedPassword;
-			}
+			return hashedPassword;
 		}
 	}
 }

@@ -18,139 +18,127 @@ namespace SideBySide
 		{
 			// after cancelling, the connection should still be usable
 			Assert.Equal(ConnectionState.Open, m_database.Connection.State);
-			using (var cmd = new MySqlCommand(@"select sum(value) from integers;", m_database.Connection))
-				Assert.Equal(210m, cmd.ExecuteScalar());
+			using var cmd = new MySqlCommand(@"select sum(value) from integers;", m_database.Connection);
+			Assert.Equal(210m, cmd.ExecuteScalar());
 		}
 
 		[Fact]
 		public void NoCancel()
 		{
-			using (var cmd = new MySqlCommand("SELECT SLEEP(0.25)", m_database.Connection))
-			{
-				var stopwatch = Stopwatch.StartNew();
-				Assert.Equal(0L, Convert.ToInt64(cmd.ExecuteScalar()));
-				Assert.InRange(stopwatch.ElapsedMilliseconds, 100, 1000);
-			}
+			using var cmd = new MySqlCommand("SELECT SLEEP(0.25)", m_database.Connection);
+			var stopwatch = Stopwatch.StartNew();
+			Assert.Equal(0L, Convert.ToInt64(cmd.ExecuteScalar()));
+			Assert.InRange(stopwatch.ElapsedMilliseconds, 100, 1000);
 		}
 
 		[SkippableFact(ServerFeatures.Timeout)]
 		public void CancelCommand()
 		{
-			using (var cmd = new MySqlCommand("SELECT SLEEP(5)", m_database.Connection))
+			using var cmd = new MySqlCommand("SELECT SLEEP(5)", m_database.Connection);
+			var task = Task.Run(async () =>
 			{
-				var task = Task.Run(async () =>
-				{
-					await Task.Delay(TimeSpan.FromSeconds(0.5));
-					cmd.Cancel();
-				});
+				await Task.Delay(TimeSpan.FromSeconds(0.5));
+				cmd.Cancel();
+			});
 
-				var stopwatch = Stopwatch.StartNew();
-				TestUtilities.AssertIsOne(cmd.ExecuteScalar());
-				Assert.InRange(stopwatch.ElapsedMilliseconds, 250, 2500);
+			var stopwatch = Stopwatch.StartNew();
+			TestUtilities.AssertIsOne(cmd.ExecuteScalar());
+			Assert.InRange(stopwatch.ElapsedMilliseconds, 250, 2500);
 
-				task.Wait(); // shouldn't throw
-			}
+			task.Wait(); // shouldn't throw
 		}
 
 		[SkippableFact(ServerFeatures.Timeout)]
 		public void CancelReaderAsynchronously()
 		{
-			using (var barrier = new Barrier(2))
-			using (var cmd = new MySqlCommand(c_hugeQuery, m_database.Connection))
+			using var barrier = new Barrier(2);
+			using var cmd = new MySqlCommand(c_hugeQuery, m_database.Connection);
+			var task = Task.Run(() =>
 			{
-				var task = Task.Run(() =>
+				barrier.SignalAndWait();
+				cmd.Cancel();
+			});
+
+			int rows = 0;
+			using (var reader = cmd.ExecuteReader())
+			{
+				Assert.True(reader.Read());
+
+				barrier.SignalAndWait();
+				try
 				{
-					barrier.SignalAndWait();
-					cmd.Cancel();
-				});
-
-				int rows = 0;
-				using (var reader = cmd.ExecuteReader())
+					while (reader.Read())
+						rows++;
+				}
+				catch (MySqlException ex)
 				{
-					Assert.True(reader.Read());
-
-					barrier.SignalAndWait();
-					try
-					{
-						while (reader.Read())
-							rows++;
-					}
-					catch (MySqlException ex)
-					{
-						Assert.Equal((int) MySqlErrorCode.QueryInterrupted, ex.Number);
-					}
-
-					// query returns 25 billion rows; we shouldn't have read many of them
-					Assert.InRange(rows, 0, 10000000);
+					Assert.Equal((int) MySqlErrorCode.QueryInterrupted, ex.Number);
 				}
 
-				task.Wait(); // shouldn't throw
+				// query returns 25 billion rows; we shouldn't have read many of them
+				Assert.InRange(rows, 0, 10000000);
 			}
+
+			task.Wait(); // shouldn't throw
 		}
 
 		[SkippableFact(ServerFeatures.Timeout)]
 		public void CancelCommandBeforeRead()
 		{
-			using (var cmd = new MySqlCommand(c_hugeQuery, m_database.Connection))
-			{
-				using (var reader = cmd.ExecuteReader())
-				{
-					cmd.Cancel();
+			using var cmd = new MySqlCommand(c_hugeQuery, m_database.Connection);
+			using var reader = cmd.ExecuteReader();
+			cmd.Cancel();
 
-					var stopwatch = Stopwatch.StartNew();
-					int rows = 0;
-					try
-					{
-						while (reader.Read())
-							rows++;
-					}
-					catch (MySqlException ex)
-					{
-						Assert.Equal((int) MySqlErrorCode.QueryInterrupted, ex.Number);
-					}
-					Assert.False(reader.NextResult());
-					TestUtilities.AssertDuration(stopwatch, 0, 1000);
-					Assert.InRange(rows, 0, 10000000);
-				}
+			var stopwatch = Stopwatch.StartNew();
+			int rows = 0;
+			try
+			{
+				while (reader.Read())
+					rows++;
 			}
+			catch (MySqlException ex)
+			{
+				Assert.Equal((int) MySqlErrorCode.QueryInterrupted, ex.Number);
+			}
+			Assert.False(reader.NextResult());
+			TestUtilities.AssertDuration(stopwatch, 0, 1000);
+			Assert.InRange(rows, 0, 10000000);
 		}
 
 		[SkippableFact(ServerFeatures.Timeout, Baseline = "Hangs in NextResult")]
 		public void CancelMultiStatementReader()
 		{
-			using (var barrier = new Barrier(2))
-			using (var cmd = new MySqlCommand(c_hugeQuery + c_hugeQuery + c_hugeQuery, m_database.Connection))
+			using var barrier = new Barrier(2);
+			using var cmd = new MySqlCommand(c_hugeQuery + c_hugeQuery + c_hugeQuery, m_database.Connection);
+			var task = Task.Run(() =>
 			{
-				var task = Task.Run(() =>
+				barrier.SignalAndWait();
+				cmd.Cancel();
+			});
+
+			int rows = 0;
+			using (var reader = cmd.ExecuteReader())
+			{
+				Assert.True(reader.Read());
+
+				barrier.SignalAndWait();
+				try
 				{
-					barrier.SignalAndWait();
-					cmd.Cancel();
-				});
-
-				int rows = 0;
-				using (var reader = cmd.ExecuteReader())
+					while (reader.Read())
+						rows++;
+				}
+				catch (MySqlException ex)
 				{
-					Assert.True(reader.Read());
-
-					barrier.SignalAndWait();
-					try
-					{
-						while (reader.Read())
-							rows++;
-					}
-					catch (MySqlException ex)
-					{
-						Assert.Equal((int) MySqlErrorCode.QueryInterrupted, ex.Number);
-					}
-
-					// query returns 25 billion rows; we shouldn't have read many of them
-					Assert.InRange(rows, 0, 10000000);
-
-					Assert.False(reader.NextResult());
+					Assert.Equal((int) MySqlErrorCode.QueryInterrupted, ex.Number);
 				}
 
-				task.Wait(); // shouldn't throw
+				// query returns 25 billion rows; we shouldn't have read many of them
+				Assert.InRange(rows, 0, 10000000);
+
+				Assert.False(reader.NextResult());
 			}
+
+			task.Wait(); // shouldn't throw
 		}
 
 		[SkippableFact(ServerFeatures.Timeout)]
@@ -174,51 +162,45 @@ namespace SideBySide
 		[SkippableFact(ServerFeatures.Timeout)]
 		public async Task CancelCommandWithTokenBeforeExecuteScalar()
 		{
-			using (var cmd = new MySqlCommand("select 1;", m_database.Connection))
+			using var cmd = new MySqlCommand("select 1;", m_database.Connection);
+			try
 			{
-				try
-				{
-					await cmd.ExecuteScalarAsync(s_canceledToken);
-					Assert.True(false);
-				}
-				catch (OperationCanceledException ex)
-				{
-					Assert.Equal(s_canceledToken, ex.CancellationToken);
-				}
+				await cmd.ExecuteScalarAsync(s_canceledToken);
+				Assert.True(false);
+			}
+			catch (OperationCanceledException ex)
+			{
+				Assert.Equal(s_canceledToken, ex.CancellationToken);
 			}
 		}
 
 		[SkippableFact(ServerFeatures.Timeout)]
 		public async Task CancelCommandWithTokenBeforeExecuteNonQuery()
 		{
-			using (var cmd = new MySqlCommand("select 1;", m_database.Connection))
+			using var cmd = new MySqlCommand("select 1;", m_database.Connection);
+			try
 			{
-				try
-				{
-					await cmd.ExecuteNonQueryAsync(s_canceledToken);
-					Assert.True(false);
-				}
-				catch (OperationCanceledException ex)
-				{
-					Assert.Equal(s_canceledToken, ex.CancellationToken);
-				}
+				await cmd.ExecuteNonQueryAsync(s_canceledToken);
+				Assert.True(false);
+			}
+			catch (OperationCanceledException ex)
+			{
+				Assert.Equal(s_canceledToken, ex.CancellationToken);
 			}
 		}
 
 		[SkippableFact(ServerFeatures.Timeout)]
 		public async Task CancelCommandWithTokenBeforeExecuteReader()
 		{
-			using (var cmd = new MySqlCommand("select 1;", m_database.Connection))
+			using var cmd = new MySqlCommand("select 1;", m_database.Connection);
+			try
 			{
-				try
-				{
-					await cmd.ExecuteReaderAsync(s_canceledToken);
-					Assert.True(false);
-				}
-				catch (OperationCanceledException ex)
-				{
-					Assert.Equal(s_canceledToken, ex.CancellationToken);
-				}
+				await cmd.ExecuteReaderAsync(s_canceledToken);
+				Assert.True(false);
+			}
+			catch (OperationCanceledException ex)
+			{
+				Assert.Equal(s_canceledToken, ex.CancellationToken);
 			}
 		}
 
@@ -272,148 +254,139 @@ create table cancel_completed_command(id integer not null primary key, value tex
 		[SkippableFact(ServerFeatures.Timeout)]
 		public async Task CancelHugeQueryWithTokenAfterExecuteReader()
 		{
-			using (var cmd = new MySqlCommand(c_hugeQuery, m_database.Connection))
-			using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(0.5)))
-			using (var reader = await cmd.ExecuteReaderAsync(cts.Token))
+			using var cmd = new MySqlCommand(c_hugeQuery, m_database.Connection);
+			using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(0.5));
+			using var reader = await cmd.ExecuteReaderAsync(cts.Token);
+			var rows = 0;
+			try
 			{
-				var rows = 0;
-				try
-				{
-					while (await reader.ReadAsync(cts.Token))
-						rows++;
-					Assert.True(false);
-				}
-				catch (OperationCanceledException ex)
-				{
-					Assert.Equal(cts.Token, ex.CancellationToken);
-					Assert.InRange(rows, 0, 10000000);
-				}
-
-				// no more result sets
-				Assert.False(reader.Read());
-				Assert.False(reader.NextResult());
+				while (await reader.ReadAsync(cts.Token))
+					rows++;
+				Assert.True(false);
 			}
+			catch (OperationCanceledException ex)
+			{
+				Assert.Equal(cts.Token, ex.CancellationToken);
+				Assert.InRange(rows, 0, 10000000);
+			}
+
+			// no more result sets
+			Assert.False(reader.Read());
+			Assert.False(reader.NextResult());
 		}
 
 		[SkippableFact(ServerFeatures.Timeout)]
 		public async Task CancelHugeQueryWithTokenInNextResult()
 		{
-			using (var cmd = new MySqlCommand(c_hugeQuery + "select 1, 2, 3;", m_database.Connection))
-			using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(0.5)))
-			using (var reader = await cmd.ExecuteReaderAsync(cts.Token))
+			using var cmd = new MySqlCommand(c_hugeQuery + "select 1, 2, 3;", m_database.Connection);
+			using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(0.5));
+			using var reader = await cmd.ExecuteReaderAsync(cts.Token);
+
+			// read first result set
+			Assert.True(await reader.ReadAsync(cts.Token));
+
+			try
 			{
-				// read first result set
-				Assert.True(await reader.ReadAsync(cts.Token));
+				// skip to the next result set
+				Assert.True(await reader.NextResultAsync(cts.Token));
 
-				try
-				{
-					// skip to the next result set
-					Assert.True(await reader.NextResultAsync(cts.Token));
-
-					// shouldn't get here
-					Assert.True(false);
-				}
-				catch (OperationCanceledException ex)
-				{
-					Assert.Equal(cts.Token, ex.CancellationToken);
-				}
-
-				// no more result sets
-				Assert.False(reader.Read());
-				Assert.False(reader.NextResult());
+				// shouldn't get here
+				Assert.True(false);
 			}
+			catch (OperationCanceledException ex)
+			{
+				Assert.Equal(cts.Token, ex.CancellationToken);
+			}
+
+			// no more result sets
+			Assert.False(reader.Read());
+			Assert.False(reader.NextResult());
 		}
 
 		[SkippableFact(ServerFeatures.Timeout)]
 		public async Task CancelSlowQueryWithTokenAfterExecuteReader()
 		{
-			using (var cmd = new MySqlCommand(c_slowQuery, m_database.Connection))
-			using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(0.5)))
-			{
-				// the call to ExecuteReader should block until the token is cancelled
-				var stopwatch = Stopwatch.StartNew();
-				using (var reader = await cmd.ExecuteReaderAsync(cts.Token))
-				{
-					TestUtilities.AssertDuration(stopwatch, 450, 3000);
+			using var cmd = new MySqlCommand(c_slowQuery, m_database.Connection);
+			using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(0.5));
 
-					var rows = 0;
-					try
-					{
-						// the OperationCanceledException is thrown later, from ReadAsync
-						while (await reader.ReadAsync(cts.Token))
-							rows++;
-						Assert.True(false);
-					}
-					catch (OperationCanceledException ex)
-					{
-						Assert.Equal(cts.Token, ex.CancellationToken);
-						Assert.InRange(rows, 0, 100);
-					}
-				}
+			// the call to ExecuteReader should block until the token is cancelled
+			var stopwatch = Stopwatch.StartNew();
+			using var reader = await cmd.ExecuteReaderAsync(cts.Token);
+			TestUtilities.AssertDuration(stopwatch, 450, 3000);
+
+			var rows = 0;
+			try
+			{
+				// the OperationCanceledException is thrown later, from ReadAsync
+				while (await reader.ReadAsync(cts.Token))
+					rows++;
+				Assert.True(false);
+			}
+			catch (OperationCanceledException ex)
+			{
+				Assert.Equal(cts.Token, ex.CancellationToken);
+				Assert.InRange(rows, 0, 100);
 			}
 		}
 
 		[SkippableFact(ServerFeatures.Timeout)]
 		public async Task CancelSlowQueryWithTokenAfterNextResult()
 		{
-			using (var cmd = new MySqlCommand("SELECT 1; " + c_slowQuery, m_database.Connection))
-			using (var reader = await cmd.ExecuteReaderAsync())
+			using var cmd = new MySqlCommand("SELECT 1; " + c_slowQuery, m_database.Connection);
+			using var reader = await cmd.ExecuteReaderAsync();
+
+			// first resultset should be available immediately
+			Assert.True(reader.Read());
+			Assert.Equal(1, reader.GetInt32(0));
+			Assert.False(reader.Read());
+
+			using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(0.5)))
 			{
-				// first resultset should be available immediately
-				Assert.True(reader.Read());
-				Assert.Equal(1, reader.GetInt32(0));
-				Assert.False(reader.Read());
+				// the call to NextResult should block until the token is cancelled
+				var stopwatch = Stopwatch.StartNew();
+				Assert.True(await reader.NextResultAsync(cts.Token));
+				TestUtilities.AssertDuration(stopwatch, 450, 1500);
 
-				using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(0.5)))
+				int rows = 0;
+				try
 				{
-					// the call to NextResult should block until the token is cancelled
-					var stopwatch = Stopwatch.StartNew();
-					Assert.True(await reader.NextResultAsync(cts.Token));
-					TestUtilities.AssertDuration(stopwatch, 450, 1500);
-
-					int rows = 0;
-					try
-					{
-						// the OperationCanceledException is thrown later, from ReadAsync
-						while (await reader.ReadAsync(cts.Token))
-							rows++;
-					}
-					catch (OperationCanceledException ex)
-					{
-						Assert.Equal(cts.Token, ex.CancellationToken);
-						Assert.InRange(rows, 0, 100);
-					}
+					// the OperationCanceledException is thrown later, from ReadAsync
+					while (await reader.ReadAsync(cts.Token))
+						rows++;
 				}
-
-				Assert.False(await reader.NextResultAsync());
+				catch (OperationCanceledException ex)
+				{
+					Assert.Equal(cts.Token, ex.CancellationToken);
+					Assert.InRange(rows, 0, 100);
+				}
 			}
+
+			Assert.False(await reader.NextResultAsync());
 		}
 
 		[SkippableFact(ServerFeatures.Timeout)]
 		public async Task CancelMultiStatementInRead()
 		{
-			using (var cmd = new MySqlCommand(c_hugeQuery + c_hugeQuery + c_hugeQuery, m_database.Connection))
-			using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(0.5)))
-			using (var reader = await cmd.ExecuteReaderAsync())
+			using var cmd = new MySqlCommand(c_hugeQuery + c_hugeQuery + c_hugeQuery, m_database.Connection);
+			using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(0.5));
+			using var reader = await cmd.ExecuteReaderAsync();
+			var rows = 0;
+			try
 			{
-				var rows = 0;
-				try
-				{
-					while (await reader.ReadAsync(cts.Token))
-						rows++;
+				while (await reader.ReadAsync(cts.Token))
+					rows++;
 
-					Assert.True(false);
-				}
-				catch (OperationCanceledException ex)
-				{
-					Assert.Equal(cts.Token, ex.CancellationToken);
-					Assert.InRange(rows, 0, 10000000);
-				}
-
-				// no more result sets; the whole command was cancelled
-				Assert.False(reader.Read());
-				Assert.False(reader.NextResult());
+				Assert.True(false);
 			}
+			catch (OperationCanceledException ex)
+			{
+				Assert.Equal(cts.Token, ex.CancellationToken);
+				Assert.InRange(rows, 0, 10000000);
+			}
+
+			// no more result sets; the whole command was cancelled
+			Assert.False(reader.Read());
+			Assert.False(reader.NextResult());
 		}
 
 		private static CancellationToken GetCanceledToken()

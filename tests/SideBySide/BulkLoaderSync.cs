@@ -418,87 +418,79 @@ namespace SideBySide
 		[SkippableFact(ConfigSettings.LocalCsvFile)]
 		public void BulkLoadFileStreamInvalidOperation()
 		{
-			MySqlBulkLoader bl = new MySqlBulkLoader(m_database.Connection);
-			using (var fileStream = new FileStream(AppConfig.MySqlBulkLoaderLocalCsvFile, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true))
+			var bl = new MySqlBulkLoader(m_database.Connection);
+			using var fileStream = new FileStream(AppConfig.MySqlBulkLoaderLocalCsvFile, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true);
+			bl.SourceStream = fileStream;
+			bl.TableName = m_testTable;
+			bl.CharacterSet = "UTF8";
+			bl.Columns.AddRange(new string[] { "one", "two", "three", "four", "five" });
+			bl.NumberOfLinesToSkip = 1;
+			bl.FieldTerminator = ",";
+			bl.FieldQuotationCharacter = '"';
+			bl.FieldQuotationOptional = true;
+			bl.Expressions.Add("five = UNHEX(five)");
+			bl.Local = false;
+			Assert.Throws<System.InvalidOperationException>(() =>
 			{
-				bl.SourceStream = fileStream;
-				bl.TableName = m_testTable;
-				bl.CharacterSet = "UTF8";
-				bl.Columns.AddRange(new string[] { "one", "two", "three", "four", "five" });
-				bl.NumberOfLinesToSkip = 1;
-				bl.FieldTerminator = ",";
-				bl.FieldQuotationCharacter = '"';
-				bl.FieldQuotationOptional = true;
-				bl.Expressions.Add("five = UNHEX(five)");
-				bl.Local = false;
-				Assert.Throws<System.InvalidOperationException>(() =>
-				{
-					int rowCount = bl.Load();
-				});
-			}
+				int rowCount = bl.Load();
+			});
 		}
 
 		[SkippableFact(ConfigSettings.LocalCsvFile)]
 		public void BulkLoadLocalFileStream()
 		{
-			MySqlBulkLoader bl = new MySqlBulkLoader(m_database.Connection);
-			using (var fileStream = new FileStream(AppConfig.MySqlBulkLoaderLocalCsvFile, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true))
-			{
-				bl.SourceStream = fileStream;
-				bl.TableName = m_testTable;
-				bl.CharacterSet = "UTF8";
-				bl.Columns.AddRange(new string[] { "one", "two", "three", "four", "five" });
-				bl.NumberOfLinesToSkip = 1;
-				bl.FieldTerminator = ",";
-				bl.FieldQuotationCharacter = '"';
-				bl.FieldQuotationOptional = true;
-				bl.Expressions.Add("five = UNHEX(five)");
-				bl.Local = true;
-				int rowCount = bl.Load();
-				Assert.Equal(20, rowCount);
-			}
+			var bl = new MySqlBulkLoader(m_database.Connection);
+			using var fileStream = new FileStream(AppConfig.MySqlBulkLoaderLocalCsvFile, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true);
+			bl.SourceStream = fileStream;
+			bl.TableName = m_testTable;
+			bl.CharacterSet = "UTF8";
+			bl.Columns.AddRange(new string[] { "one", "two", "three", "four", "five" });
+			bl.NumberOfLinesToSkip = 1;
+			bl.FieldTerminator = ",";
+			bl.FieldQuotationCharacter = '"';
+			bl.FieldQuotationOptional = true;
+			bl.Expressions.Add("five = UNHEX(five)");
+			bl.Local = true;
+			int rowCount = bl.Load();
+			Assert.Equal(20, rowCount);
 		}
 
 		[Fact]
 		public void BulkLoadMemoryStreamInvalidOperation()
 		{
-			MySqlBulkLoader bl = new MySqlBulkLoader(m_database.Connection);
-			using (var memoryStream = new MemoryStream(m_memoryStreamBytes, false))
+			var bl = new MySqlBulkLoader(m_database.Connection);
+			using var memoryStream = new MemoryStream(m_memoryStreamBytes, false);
+			bl.SourceStream = memoryStream;
+			bl.TableName = m_testTable;
+			bl.CharacterSet = "UTF8";
+			bl.Columns.AddRange(new string[] { "one", "two", "three" });
+			bl.NumberOfLinesToSkip = 0;
+			bl.FieldTerminator = ",";
+			bl.FieldQuotationCharacter = '"';
+			bl.FieldQuotationOptional = true;
+			bl.Local = false;
+			Assert.Throws<System.InvalidOperationException>(() =>
 			{
-				bl.SourceStream = memoryStream;
-				bl.TableName = m_testTable;
-				bl.CharacterSet = "UTF8";
-				bl.Columns.AddRange(new string[] { "one", "two", "three" });
-				bl.NumberOfLinesToSkip = 0;
-				bl.FieldTerminator = ",";
-				bl.FieldQuotationCharacter = '"';
-				bl.FieldQuotationOptional = true;
-				bl.Local = false;
-				Assert.Throws<System.InvalidOperationException>(() =>
-				{
-					int rowCount = bl.Load();
-				});
-			}
+				int rowCount = bl.Load();
+			});
 		}
 
 		[Fact]
 		public void BulkLoadLocalMemoryStream()
 		{
-			MySqlBulkLoader bl = new MySqlBulkLoader(m_database.Connection);
-			using (var memoryStream = new MemoryStream(m_memoryStreamBytes, false))
-			{
-				bl.SourceStream = memoryStream;
-				bl.TableName = m_testTable;
-				bl.CharacterSet = "UTF8";
-				bl.Columns.AddRange(new string[] { "one", "two", "three" });
-				bl.NumberOfLinesToSkip = 0;
-				bl.FieldTerminator = ",";
-				bl.FieldQuotationCharacter = '"';
-				bl.FieldQuotationOptional = true;
-				bl.Local = true;
-				int rowCount = bl.Load();
-				Assert.Equal(5, rowCount);
-			}
+			var bl = new MySqlBulkLoader(m_database.Connection);
+			using var memoryStream = new MemoryStream(m_memoryStreamBytes, false);
+			bl.SourceStream = memoryStream;
+			bl.TableName = m_testTable;
+			bl.CharacterSet = "UTF8";
+			bl.Columns.AddRange(new string[] { "one", "two", "three" });
+			bl.NumberOfLinesToSkip = 0;
+			bl.FieldTerminator = ",";
+			bl.FieldQuotationCharacter = '"';
+			bl.FieldQuotationOptional = true;
+			bl.Local = true;
+			int rowCount = bl.Load();
+			Assert.Equal(5, rowCount);
 		}
 #endif
 

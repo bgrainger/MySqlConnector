@@ -40,102 +40,90 @@ insert into data_adapter(int_value, text_value) values
 		[Fact]
 		public void UseDataAdapter()
 		{
-			using (var command = new MySqlCommand("SELECT 1", m_connection))
-			using (var da = new MySqlDataAdapter())
-			using (var ds = new DataSet())
-			{
-				da.SelectCommand = command;
-				da.Fill(ds);
-				Assert.Single(ds.Tables);
-				Assert.Single(ds.Tables[0].Rows);
-				Assert.Single(ds.Tables[0].Rows[0].ItemArray);
-				TestUtilities.AssertIsOne(ds.Tables[0].Rows[0][0]);
-			}
+			using var command = new MySqlCommand("SELECT 1", m_connection);
+			using var da = new MySqlDataAdapter();
+			using var ds = new DataSet();
+			da.SelectCommand = command;
+			da.Fill(ds);
+			Assert.Single(ds.Tables);
+			Assert.Single(ds.Tables[0].Rows);
+			Assert.Single(ds.Tables[0].Rows[0].ItemArray);
+			TestUtilities.AssertIsOne(ds.Tables[0].Rows[0][0]);
 		}
 
 		[Fact]
 		public void UseDataAdapterMySqlConnectionConstructor()
 		{
-			using (var command = new MySqlCommand("SELECT 1", m_connection))
-			using (var da = new MySqlDataAdapter(command))
-			using (var ds = new DataSet())
-			{
-				da.Fill(ds);
-				TestUtilities.AssertIsOne(ds.Tables[0].Rows[0][0]);
-			}
+			using var command = new MySqlCommand("SELECT 1", m_connection);
+			using var da = new MySqlDataAdapter(command);
+			using var ds = new DataSet();
+			da.Fill(ds);
+			TestUtilities.AssertIsOne(ds.Tables[0].Rows[0][0]);
 		}
 
 		[Fact]
 		public void UseDataAdapterStringMySqlConnectionConstructor()
 		{
-			using (var da = new MySqlDataAdapter("SELECT 1", m_connection))
-			using (var ds = new DataSet())
-			{
-				da.Fill(ds);
-				TestUtilities.AssertIsOne(ds.Tables[0].Rows[0][0]);
-			}
+			using var da = new MySqlDataAdapter("SELECT 1", m_connection);
+			using var ds = new DataSet();
+			da.Fill(ds);
+			TestUtilities.AssertIsOne(ds.Tables[0].Rows[0][0]);
 		}
 
 		[Fact]
 		public void UseDataAdapterStringStringConstructor()
 		{
-			using (var da = new MySqlDataAdapter("SELECT 1", AppConfig.ConnectionString))
-			using (var ds = new DataSet())
-			{
-				da.Fill(ds);
-				TestUtilities.AssertIsOne(ds.Tables[0].Rows[0][0]);
-			}
+			using var da = new MySqlDataAdapter("SELECT 1", AppConfig.ConnectionString);
+			using var ds = new DataSet();
+			da.Fill(ds);
+			TestUtilities.AssertIsOne(ds.Tables[0].Rows[0][0]);
 		}
 
 		[Fact]
 		public void Fill()
 		{
-			using (var da = new MySqlDataAdapter("select * from data_adapter", m_connection))
-			using (var ds = new DataSet())
-			{
-				da.Fill(ds, "data_adapter");
+			using var da = new MySqlDataAdapter("select * from data_adapter", m_connection);
+			using var ds = new DataSet();
+			da.Fill(ds, "data_adapter");
 
-				Assert.Single(ds.Tables);
-				Assert.Equal(3, ds.Tables[0].Rows.Count);
+			Assert.Single(ds.Tables);
+			Assert.Equal(3, ds.Tables[0].Rows.Count);
 
-				Assert.Equal(1L, ds.Tables[0].Rows[0]["id"]);
-				Assert.Equal(2L, ds.Tables[0].Rows[1]["id"]);
-				Assert.Equal(3L, ds.Tables[0].Rows[2]["id"]);
+			Assert.Equal(1L, ds.Tables[0].Rows[0]["id"]);
+			Assert.Equal(2L, ds.Tables[0].Rows[1]["id"]);
+			Assert.Equal(3L, ds.Tables[0].Rows[2]["id"]);
 
-				Assert.Equal(DBNull.Value, ds.Tables[0].Rows[0]["int_value"]);
-				Assert.Equal(0, ds.Tables[0].Rows[1]["int_value"]);
-				Assert.Equal(1, ds.Tables[0].Rows[2]["int_value"]);
+			Assert.Equal(DBNull.Value, ds.Tables[0].Rows[0]["int_value"]);
+			Assert.Equal(0, ds.Tables[0].Rows[1]["int_value"]);
+			Assert.Equal(1, ds.Tables[0].Rows[2]["int_value"]);
 
-				Assert.Equal(DBNull.Value, ds.Tables[0].Rows[0]["text_value"]);
-				Assert.Equal("", ds.Tables[0].Rows[1]["text_value"]);
-				Assert.Equal("one", ds.Tables[0].Rows[2]["text_value"]);
-			}
+			Assert.Equal(DBNull.Value, ds.Tables[0].Rows[0]["text_value"]);
+			Assert.Equal("", ds.Tables[0].Rows[1]["text_value"]);
+			Assert.Equal("one", ds.Tables[0].Rows[2]["text_value"]);
 		}
 
 		[Fact]
 		public void LoadDataTable()
 		{
-			using (var command = new MySqlCommand("SELECT * FROM data_adapter", m_connection))
-			using (var dr = command.ExecuteReader())
-			{
-				var dt = new DataTable();
-				dt.Load(dr);
-				dr.Close();
+			using var command = new MySqlCommand("SELECT * FROM data_adapter", m_connection);
+			using var dr = command.ExecuteReader();
+			var dt = new DataTable();
+			dt.Load(dr);
+			dr.Close();
 
-				Assert.Equal(3, dt.Rows.Count);
+			Assert.Equal(3, dt.Rows.Count);
 
-				Assert.Equal(1L, dt.Rows[0]["id"]);
-				Assert.Equal(2L, dt.Rows[1]["id"]);
-				Assert.Equal(3L, dt.Rows[2]["id"]);
+			Assert.Equal(1L, dt.Rows[0]["id"]);
+			Assert.Equal(2L, dt.Rows[1]["id"]);
+			Assert.Equal(3L, dt.Rows[2]["id"]);
 
-				Assert.Equal(DBNull.Value, dt.Rows[0]["int_value"]);
-				Assert.Equal(0, dt.Rows[1]["int_value"]);
-				Assert.Equal(1, dt.Rows[2]["int_value"]);
+			Assert.Equal(DBNull.Value, dt.Rows[0]["int_value"]);
+			Assert.Equal(0, dt.Rows[1]["int_value"]);
+			Assert.Equal(1, dt.Rows[2]["int_value"]);
 
-				Assert.Equal(DBNull.Value, dt.Rows[0]["text_value"]);
-				Assert.Equal("", dt.Rows[1]["text_value"]);
-				Assert.Equal("one", dt.Rows[2]["text_value"]);
-			}
+			Assert.Equal(DBNull.Value, dt.Rows[0]["text_value"]);
+			Assert.Equal("", dt.Rows[1]["text_value"]);
+			Assert.Equal("one", dt.Rows[2]["text_value"]);
 		}
 
 		[SkippableFact(Baseline = "Throws FormatException: Input string was not in a correct format")]
@@ -163,32 +151,28 @@ insert into data_adapter(int_value, text_value) values
 				dr["text_value"] = "four";
 				dt.Rows.Add(dr);
 
-				using (var ds2 = ds.GetChanges())
-				{
-					da.Update(ds2);
+				using var ds2 = ds.GetChanges();
+				da.Update(ds2);
 
-					ds.Merge(ds2);
-					ds.AcceptChanges();
-				}
+				ds.Merge(ds2);
+				ds.AcceptChanges();
 			}
 
-			using (var cmd2 = new MySqlCommand("SELECT id, int_value, text_value FROM data_adapter", m_connection))
-			using (var dr2 = cmd2.ExecuteReader())
-			{
-				Assert.True(dr2.Read());
-				Assert.Equal(1L, dr2[0]);
+			using var cmd2 = new MySqlCommand("SELECT id, int_value, text_value FROM data_adapter", m_connection);
+			using var dr2 = cmd2.ExecuteReader();
+			Assert.True(dr2.Read());
+			Assert.Equal(1L, dr2[0]);
 
-				Assert.True(dr2.Read());
-				Assert.Equal(2L, dr2[0]);
+			Assert.True(dr2.Read());
+			Assert.Equal(2L, dr2[0]);
 
-				Assert.True(dr2.Read());
-				Assert.Equal(3L, dr2[0]);
+			Assert.True(dr2.Read());
+			Assert.Equal(3L, dr2[0]);
 
-				Assert.True(dr2.Read());
-				Assert.Equal(4L, dr2[0]);
-				Assert.Equal(4, dr2[1]);
-				Assert.Equal("four", dr2[2]);
-			}
+			Assert.True(dr2.Read());
+			Assert.Equal(4L, dr2[0]);
+			Assert.Equal(4, dr2[1]);
+			Assert.Equal("four", dr2[2]);
 		}
 
 		readonly MySqlConnection m_connection;

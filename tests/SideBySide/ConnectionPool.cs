@@ -33,31 +33,25 @@ namespace SideBySide
 			using (var connection = new MySqlConnection(csb.ConnectionString))
 			{
 				connection.Open();
-				using (var command = connection.CreateCommand())
-				{
-					command.CommandText = "select @@autocommit;";
-					Assert.Equal(1L, command.ExecuteScalar());
-				}
+				using var command = connection.CreateCommand();
+				command.CommandText = "select @@autocommit;";
+				Assert.Equal(1L, command.ExecuteScalar());
 			}
 
 			using (var connection = new MySqlConnection(csb.ConnectionString))
 			{
 				connection.Open();
-				using (var command = connection.CreateCommand())
-				{
-					command.CommandText = "SET autocommit=0;";
-					command.ExecuteNonQuery();
-				}
+				using var command = connection.CreateCommand();
+				command.CommandText = "SET autocommit=0;";
+				command.ExecuteNonQuery();
 			}
 
 			using (var connection = new MySqlConnection(csb.ConnectionString))
 			{
 				connection.Open();
-				using (var command = connection.CreateCommand())
-				{
-					command.CommandText = "select @@autocommit;";
-					Assert.Equal(expected, command.ExecuteScalar());
-				}
+				using var command = connection.CreateCommand();
+				command.CommandText = "select @@autocommit;";
+				Assert.Equal(expected, command.ExecuteScalar());
 			}
 		}
 
@@ -198,21 +192,15 @@ namespace SideBySide
 
 		private async Task CheckCharacterSetAsync(string connectionString)
 		{
-			using (var connection = new MySqlConnection(connectionString))
-			{
-				await connection.OpenAsync().ConfigureAwait(false);
-				using (var cmd = connection.CreateCommand())
-				{
-					cmd.CommandText = @"select @@character_set_client, @@character_set_connection";
-					using (var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false))
-					{
-						Assert.True(await reader.ReadAsync().ConfigureAwait(false));
-						Assert.Equal("utf8mb4", reader.GetString(0));
-						Assert.Equal("utf8mb4", reader.GetString(1));
-						Assert.False(await reader.ReadAsync().ConfigureAwait(false));
-					}
-				}
-			}
+			using var connection = new MySqlConnection(connectionString);
+			await connection.OpenAsync().ConfigureAwait(false);
+			using var cmd = connection.CreateCommand();
+			cmd.CommandText = @"select @@character_set_client, @@character_set_connection";
+			using var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
+			Assert.True(await reader.ReadAsync().ConfigureAwait(false));
+			Assert.Equal("utf8mb4", reader.GetString(0));
+			Assert.Equal("utf8mb4", reader.GetString(1));
+			Assert.False(await reader.ReadAsync().ConfigureAwait(false));
 		}
 
 		[Fact]
@@ -299,14 +287,12 @@ namespace SideBySide
 
 			async Task OpenConnections(uint numConnections, HashSet<int> serverIdSet)
 			{
-				using (var connection = new MySqlConnection(csb.ConnectionString))
-				{
-					await connection.OpenAsync();
-					serverIdSet.Add(connection.ServerThread);
-					if (--numConnections <= 0)
-						return;
-					await OpenConnections(numConnections, serverIdSet);
-				}
+				using var connection = new MySqlConnection(csb.ConnectionString);
+				await connection.OpenAsync();
+				serverIdSet.Add(connection.ServerThread);
+				if (--numConnections <= 0)
+					return;
+				await OpenConnections(numConnections, serverIdSet);
 			}
 
 			await OpenConnections(maxPoolSize, serverThreadIdsBegin);

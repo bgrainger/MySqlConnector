@@ -475,8 +475,8 @@ namespace MySqlConnector.Core
 						var task = Task.Delay(reaperInterval);
 						try
 						{
-							using (var source = new CancellationTokenSource(reaperInterval))
-								await ReapAsync(IOBehavior.Asynchronous, source.Token).ConfigureAwait(false);
+							using var source = new CancellationTokenSource(reaperInterval);
+							await ReapAsync(IOBehavior.Asynchronous, source.Token).ConfigureAwait(false);
 						}
 						catch
 						{

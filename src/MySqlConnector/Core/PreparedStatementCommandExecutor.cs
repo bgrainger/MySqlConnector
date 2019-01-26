@@ -26,28 +26,26 @@ namespace MySqlConnector.Core
 			cancellationToken.ThrowIfCancellationRequested();
 			if (Log.IsDebugEnabled())
 				Log.Debug("Session{0} ExecuteBehavior {1} CommandText: {2}", m_command.Connection.Session.Id, ioBehavior, commandText);
-			using (var payload = CreateQueryPayload(m_preparedStatements.Statements[0], parameterCollection, m_command.Connection.GuidFormat))
-			using (m_command.RegisterCancel(cancellationToken))
+			using var payload = CreateQueryPayload(m_preparedStatements.Statements[0], parameterCollection, m_command.Connection.GuidFormat);
+			using var _ = m_command.RegisterCancel(cancellationToken);
+			m_command.Connection.Session.StartQuerying(m_command);
+			m_command.LastInsertedId = -1;
+			try
 			{
-				m_command.Connection.Session.StartQuerying(m_command);
-				m_command.LastInsertedId = -1;
-				try
-				{
-					await m_command.Connection.Session.SendAsync(payload, ioBehavior, CancellationToken.None).ConfigureAwait(false);
-					return await MySqlDataReader.CreateAsync(m_command, behavior, ResultSetProtocol.Binary, ioBehavior).ConfigureAwait(false);
-				}
-				catch (MySqlException ex) when (ex.Number == (int) MySqlErrorCode.QueryInterrupted && cancellationToken.IsCancellationRequested)
-				{
-					Log.Warn("Session{0} query was interrupted", m_command.Connection.Session.Id);
-					throw new OperationCanceledException(cancellationToken);
-				}
-				catch (Exception ex) when (payload.ArraySegment.Count > 4_194_304 && (ex is SocketException || ex is IOException || ex is MySqlProtocolException))
-				{
-					// the default MySQL Server value for max_allowed_packet (in MySQL 5.7) is 4MiB: https://dev.mysql.com/doc/refman/5.7/en/server-system-variables.html#sysvar_max_allowed_packet
-					// use "decimal megabytes" (to round up) when creating the exception message
-					int megabytes = payload.ArraySegment.Count / 1_000_000;
-					throw new MySqlException("Error submitting {0}MB packet; ensure 'max_allowed_packet' is greater than {0}MB.".FormatInvariant(megabytes), ex);
-				}
+				await m_command.Connection.Session.SendAsync(payload, ioBehavior, CancellationToken.None).ConfigureAwait(false);
+				return await MySqlDataReader.CreateAsync(m_command, behavior, ResultSetProtocol.Binary, ioBehavior).ConfigureAwait(false);
+			}
+			catch (MySqlException ex) when (ex.Number == (int) MySqlErrorCode.QueryInterrupted && cancellationToken.IsCancellationRequested)
+			{
+				Log.Warn("Session{0} query was interrupted", m_command.Connection.Session.Id);
+				throw new OperationCanceledException(cancellationToken);
+			}
+			catch (Exception ex) when (payload.ArraySegment.Count > 4_194_304 && (ex is SocketException || ex is IOException || ex is MySqlProtocolException))
+			{
+				// the default MySQL Server value for max_allowed_packet (in MySQL 5.7) is 4MiB: https://dev.mysql.com/doc/refman/5.7/en/server-system-variables.html#sysvar_max_allowed_packet
+				// use "decimal megabytes" (to round up) when creating the exception message
+				int megabytes = payload.ArraySegment.Count / 1_000_000;
+				throw new MySqlException("Error submitting {0}MB packet; ensure 'max_allowed_packet' is greater than {0}MB.".FormatInvariant(megabytes), ex);
 			}
 		}
 

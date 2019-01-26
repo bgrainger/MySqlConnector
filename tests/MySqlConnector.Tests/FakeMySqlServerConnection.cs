@@ -110,17 +110,15 @@ namespace MySqlConnector.Tests
 
 		private static byte[] MakePayload(int sequenceNumber, Action<BinaryWriter> writePayload)
 		{
-			using (var memoryStream = new MemoryStream())
+			using var memoryStream = new MemoryStream();
+			using (var writer = new BinaryWriter(memoryStream, Encoding.UTF8, leaveOpen: true))
 			{
-				using (var writer = new BinaryWriter(memoryStream, Encoding.UTF8, leaveOpen: true))
-				{
-					writer.Write(default(int));
-					writePayload(writer);
-					memoryStream.Position = 0;
-					writer.Write(((int) (memoryStream.Length - 4)) | ((sequenceNumber % 256) << 24));
-				}
-				return memoryStream.ToArray();
+				writer.Write(default(int));
+				writePayload(writer);
+				memoryStream.Position = 0;
+				writer.Write(((int) (memoryStream.Length - 4)) | ((sequenceNumber % 256) << 24));
 			}
+			return memoryStream.ToArray();
 		}
 
 		private static async Task<byte[]> ReadPayloadAsync(Stream stream, CancellationToken token)

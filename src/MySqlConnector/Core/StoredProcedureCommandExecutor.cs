@@ -96,23 +96,21 @@ namespace MySqlConnector.Core
 				return;
 			m_setParamsFlags = false;
 			var commandText = "SELECT " + string.Join(", ", m_outParamNames);
-			using (var reader = (MySqlDataReader) base.ExecuteReaderAsync(commandText, new MySqlParameterCollection(), CommandBehavior.Default, IOBehavior.Synchronous, m_cancellationToken).GetAwaiter().GetResult())
+			using var reader = (MySqlDataReader) base.ExecuteReaderAsync(commandText, new MySqlParameterCollection(), CommandBehavior.Default, IOBehavior.Synchronous, m_cancellationToken).GetAwaiter().GetResult();
+			reader.Read();
+			for (var i = 0; i < m_outParams.Count; i++)
 			{
-				reader.Read();
-				for (var i = 0; i < m_outParams.Count; i++)
+				var param = m_outParams[i];
+				if (param.HasSetDbType && !reader.IsDBNull(i))
 				{
-					var param = m_outParams[i];
-					if (param.HasSetDbType && !reader.IsDBNull(i))
+					var dbTypeMapping = TypeMapper.Instance.GetDbTypeMapping(param.DbType);
+					if (dbTypeMapping != null)
 					{
-						var dbTypeMapping = TypeMapper.Instance.GetDbTypeMapping(param.DbType);
-						if (dbTypeMapping != null)
-						{
-							param.Value = dbTypeMapping.DoConversion(reader.GetValue(i));
-							continue;
-						}
+						param.Value = dbTypeMapping.DoConversion(reader.GetValue(i));
+						continue;
 					}
-					param.Value = reader.GetValue(i);
 				}
+				param.Value = reader.GetValue(i);
 			}
 		}
 

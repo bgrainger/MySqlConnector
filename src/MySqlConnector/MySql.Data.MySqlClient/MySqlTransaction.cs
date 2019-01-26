@@ -78,8 +78,8 @@ namespace MySql.Data.MySqlClient
 					{
 						if (Connection.Session.IsConnected)
 						{
-							using (var cmd = new MySqlCommand("rollback", Connection, this))
-								cmd.ExecuteNonQuery();
+							using var cmd = new MySqlCommand("rollback", Connection, this);
+							cmd.ExecuteNonQuery();
 						}
 						Connection.CurrentTransaction = null;
 					}

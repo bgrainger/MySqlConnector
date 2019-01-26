@@ -23,35 +23,32 @@ namespace MySqlConnector.Core
 			{
 				try
 				{
-					using (var cmd = connection.CreateCommand())
+					using var cmd = connection.CreateCommand();
+					cmd.Transaction = connection.CurrentTransaction;
+					cmd.CommandText = @"SELECT param_list, returns FROM mysql.proc WHERE db = @schema AND name = @component";
+					cmd.Parameters.AddWithValue("@schema", schema);
+					cmd.Parameters.AddWithValue("@component", component);
+
+					using var reader = (MySqlDataReader) await cmd.ExecuteReaderAsync(CommandBehavior.Default, ioBehavior, cancellationToken).ConfigureAwait(false);
+					var exists = await reader.ReadAsync(cancellationToken).ConfigureAwait(false);
+					if (!exists)
+						return null;
+
+					var parametersSqlBytes = (byte[]) reader.GetValue(0);
+					var returnsSqlBytes = (byte[]) reader.GetValue(1);
+
+					// ASSUME this is UTF-8 encoded; it's possible that the `character_set_client` column would need to be used?
+					var parametersSql = Encoding.UTF8.GetString(parametersSqlBytes);
+					var returnsSql = Encoding.UTF8.GetString(returnsSqlBytes);
+
+					var parsedParameters = ParseParameters(parametersSql);
+					if (returnsSql.Length != 0)
 					{
-						cmd.Transaction = connection.CurrentTransaction;
-						cmd.CommandText = @"SELECT param_list, returns FROM mysql.proc WHERE db = @schema AND name = @component";
-						cmd.Parameters.AddWithValue("@schema", schema);
-						cmd.Parameters.AddWithValue("@component", component);
-						using (var reader = (MySqlDataReader) await cmd.ExecuteReaderAsync(CommandBehavior.Default, ioBehavior, cancellationToken).ConfigureAwait(false))
-						{
-							var exists = await reader.ReadAsync(cancellationToken).ConfigureAwait(false);
-							if (!exists)
-								return null;
-
-							var parametersSqlBytes = (byte[]) reader.GetValue(0);
-							var returnsSqlBytes = (byte[]) reader.GetValue(1);
-
-							// ASSUME this is UTF-8 encoded; it's possible that the `character_set_client` column would need to be used?
-							var parametersSql = Encoding.UTF8.GetString(parametersSqlBytes);
-							var returnsSql = Encoding.UTF8.GetString(returnsSqlBytes);
-
-							var parsedParameters = ParseParameters(parametersSql);
-							if (returnsSql.Length != 0)
-							{
-								var returnDataType = ParseDataType(returnsSql, out var unsigned, out var length);
-								parsedParameters.Insert(0, CreateCachedParameter(0, null, null, returnDataType, unsigned, length, returnsSql));
-							}
-
-							return new CachedProcedure(schema, component, parsedParameters);
-						}
+						var returnDataType = ParseDataType(returnsSql, out var unsigned, out var length);
+						parsedParameters.Insert(0, CreateCachedParameter(0, null, null, returnDataType, unsigned, length, returnsSql));
 					}
+
+					return new CachedProcedure(schema, component, parsedParameters);
 				}
 				catch (MySqlException ex)
 				{
@@ -82,23 +79,21 @@ namespace MySqlConnector.Core
 				cmd.Parameters.AddWithValue("@schema", schema);
 				cmd.Parameters.AddWithValue("@component", component);
 
-				using (var reader = (MySqlDataReader) await cmd.ExecuteReaderAsync(CommandBehavior.Default, ioBehavior, cancellationToken).ConfigureAwait(false))
-				{
-					await reader.ReadAsync(cancellationToken).ConfigureAwait(false);
-					routineCount = reader.GetInt32(0);
-					await reader.NextResultAsync(cancellationToken).ConfigureAwait(false);
+				using var reader = (MySqlDataReader) await cmd.ExecuteReaderAsync(CommandBehavior.Default, ioBehavior, cancellationToken).ConfigureAwait(false);
+				await reader.ReadAsync(cancellationToken).ConfigureAwait(false);
+				routineCount = reader.GetInt32(0);
+				await reader.NextResultAsync(cancellationToken).ConfigureAwait(false);
 
-					while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
-					{
-						parameters.Add(new CachedParameter(
-							reader.GetInt32(0),
-							!reader.IsDBNull(1) ? reader.GetString(1) : null,
-							!reader.IsDBNull(2) ? reader.GetString(2) : null,
-							reader.GetString(3),
-							reader.GetString(4).IndexOf("unsigned", StringComparison.OrdinalIgnoreCase) != -1,
-							0
-						));
-					}
+				while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+				{
+					parameters.Add(new CachedParameter(
+						reader.GetInt32(0),
+						!reader.IsDBNull(1) ? reader.GetString(1) : null,
+						!reader.IsDBNull(2) ? reader.GetString(2) : null,
+						reader.GetString(3),
+						reader.GetString(4).IndexOf("unsigned", StringComparison.OrdinalIgnoreCase) != -1,
+						0
+					));
 				}
 			}
 

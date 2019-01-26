@@ -348,14 +348,10 @@ namespace MySql.Data.MySqlClient
 					csb.Server = m_session.IPAddress.ToString();
 				csb.ConnectionTimeout = 3u;
 
-				using (var connection = new MySqlConnection(csb.ConnectionString))
-				{
-					connection.Open();
-					using (var killCommand = new MySqlCommand("KILL QUERY {0}".FormatInvariant(command.Connection.ServerThread), connection))
-					{
-						session.DoCancel(command, killCommand);
-					}
-				}
+				using var connection = new MySqlConnection(csb.ConnectionString);
+				connection.Open();
+				using var killCommand = new MySqlCommand("KILL QUERY {0}".FormatInvariant(command.Connection.ServerThread), connection);
+				session.DoCancel(command, killCommand);
 			}
 			catch (MySqlException ex)
 			{
