@@ -400,24 +400,15 @@ namespace MySql.Data.MySqlClient
 			if (CommandType == CommandType.StoredProcedure)
 				statementPreparerOptions |= StatementPreparerOptions.AllowOutputParameters;
 
-			switch (Connection.GuidFormat)
+			statementPreparerOptions |= Connection.GuidFormat switch
 			{
-			case MySqlGuidFormat.Char36:
-				statementPreparerOptions |= StatementPreparerOptions.GuidFormatChar36;
-				break;
-			case MySqlGuidFormat.Char32:
-				statementPreparerOptions |= StatementPreparerOptions.GuidFormatChar32;
-				break;
-			case MySqlGuidFormat.Binary16:
-				statementPreparerOptions |= StatementPreparerOptions.GuidFormatBinary16;
-				break;
-			case MySqlGuidFormat.TimeSwapBinary16:
-				statementPreparerOptions |= StatementPreparerOptions.GuidFormatTimeSwapBinary16;
-				break;
-			case MySqlGuidFormat.LittleEndianBinary16:
-				statementPreparerOptions |= StatementPreparerOptions.GuidFormatLittleEndianBinary16;
-				break;
-			}
+				MySqlGuidFormat.Char36 => StatementPreparerOptions.GuidFormatChar36,
+				MySqlGuidFormat.Char32 => StatementPreparerOptions.GuidFormatChar32,
+				MySqlGuidFormat.Binary16 => StatementPreparerOptions.GuidFormatBinary16,
+				MySqlGuidFormat.TimeSwapBinary16 => StatementPreparerOptions.GuidFormatTimeSwapBinary16,
+				MySqlGuidFormat.LittleEndianBinary16 => StatementPreparerOptions.GuidFormatLittleEndianBinary16,
+				_ => StatementPreparerOptions.None
+			};
 
 			return statementPreparerOptions;
 		}

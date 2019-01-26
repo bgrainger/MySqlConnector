@@ -24,26 +24,16 @@ namespace MySqlConnector.Logging
 					m_logger.Log(GetLevel(level), 0, (message, args), exception, s_messageFormatter);
 			}
 
-			private static LogLevel GetLevel(MySqlConnectorLogLevel level)
+			private static LogLevel GetLevel(MySqlConnectorLogLevel level) => level switch
 			{
-				switch (level)
-				{
-				case MySqlConnectorLogLevel.Trace:
-					return LogLevel.Trace;
-				case MySqlConnectorLogLevel.Debug:
-					return LogLevel.Debug;
-				case MySqlConnectorLogLevel.Info:
-					return LogLevel.Information;
-				case MySqlConnectorLogLevel.Warn:
-					return LogLevel.Warning;
-				case MySqlConnectorLogLevel.Error:
-					return LogLevel.Error;
-				case MySqlConnectorLogLevel.Fatal:
-					return LogLevel.Critical;
-				default:
-					throw new ArgumentOutOfRangeException(nameof(level), level, "Invalid value for 'level'.");
-				}
-			}
+				MySqlConnectorLogLevel.Trace => LogLevel.Trace,
+				MySqlConnectorLogLevel.Debug => LogLevel.Debug,
+				MySqlConnectorLogLevel.Info => LogLevel.Information,
+				MySqlConnectorLogLevel.Warn => LogLevel.Warning,
+				MySqlConnectorLogLevel.Error => LogLevel.Error,
+				MySqlConnectorLogLevel.Fatal => LogLevel.Critical,
+				_ => throw new ArgumentOutOfRangeException(nameof(level), level, "Invalid value for 'level'.")
+			};
 
 			static readonly Func<string, Exception, string> s_getMessage = (s, e) => s;
 			static readonly Func<(string Message, object[] Args), Exception, string> s_messageFormatter = (s, e) => string.Format(CultureInfo.InvariantCulture, s.Message, s.Args);

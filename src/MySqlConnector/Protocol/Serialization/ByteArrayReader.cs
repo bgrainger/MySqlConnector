@@ -121,22 +121,16 @@ namespace MySqlConnector.Protocol.Serialization
 
 		public ulong ReadLengthEncodedInteger()
 		{
-			byte encodedLength = m_buffer[m_offset++];
-			switch (encodedLength)
+			var encodedLength = m_buffer[m_offset++];
+			return encodedLength switch
 			{
-			case 0xFB:
-				throw new FormatException("Length-encoded integer cannot have 0xFB prefix byte.");
-			case 0xFC:
-				return ReadFixedLengthUInt32(2);
-			case 0xFD:
-				return ReadFixedLengthUInt32(3);
-			case 0xFE:
-				return ReadFixedLengthUInt64(8);
-			case 0xFF:
-				throw new FormatException("Length-encoded integer cannot have 0xFF prefix byte.");
-			default:
-				return encodedLength;
-			}
+				0xFB => throw new FormatException("Length-encoded integer cannot have 0xFB prefix byte."),
+				0xFC => ReadFixedLengthUInt32(2),
+				0xFD => ReadFixedLengthUInt32(3),
+				0xFE => ReadFixedLengthUInt64(8),
+				0xFF => throw new FormatException("Length-encoded integer cannot have 0xFF prefix byte."),
+				_ => encodedLength
+			};
 		}
 
 		public int ReadLengthEncodedIntegerOrNull()

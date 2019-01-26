@@ -25,28 +25,18 @@ namespace MySqlConnector.Logging
 				}
 			}
 
-			private static LogLevel GetLevel(MySqlConnectorLogLevel level)
+			private static LogLevel GetLevel(MySqlConnectorLogLevel level) => level switch
 			{
-				switch (level)
-				{
-				case MySqlConnectorLogLevel.Trace:
-					return LogLevel.Trace;
-				case MySqlConnectorLogLevel.Debug:
-					return LogLevel.Debug;
-				case MySqlConnectorLogLevel.Info:
-					return LogLevel.Info;
-				case MySqlConnectorLogLevel.Warn:
-					return LogLevel.Warn;
-				case MySqlConnectorLogLevel.Error:
-					return LogLevel.Error;
-				case MySqlConnectorLogLevel.Fatal:
-					return LogLevel.Fatal;
-				default:
-					throw new ArgumentOutOfRangeException(nameof(level), level, "Invalid value for 'level'.");
-				}
-			}
+				MySqlConnectorLogLevel.Trace => LogLevel.Trace,
+				MySqlConnectorLogLevel.Debug => LogLevel.Debug,
+				MySqlConnectorLogLevel.Info => LogLevel.Info,
+				MySqlConnectorLogLevel.Warn => LogLevel.Warn,
+				MySqlConnectorLogLevel.Error => LogLevel.Error,
+				MySqlConnectorLogLevel.Fatal => LogLevel.Fatal,
+				_ => throw new ArgumentOutOfRangeException(nameof(level), level, "Invalid value for 'level'.")
+			};
 
-			readonly Logger m_logger;
+		readonly Logger m_logger;
 		}
 	}
 }

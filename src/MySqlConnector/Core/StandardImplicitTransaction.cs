@@ -12,32 +12,17 @@ namespace MySqlConnector.Core
 
 		protected override void OnStart()
 		{
-			System.Data.IsolationLevel isolationLevel;
-			switch (Transaction.IsolationLevel)
+			System.Data.IsolationLevel isolationLevel = Transaction.IsolationLevel switch
 			{
-			case IsolationLevel.Serializable:
-				isolationLevel = System.Data.IsolationLevel.Serializable;
-				break;
-			case IsolationLevel.RepeatableRead:
-				isolationLevel = System.Data.IsolationLevel.RepeatableRead;
-				break;
-			case IsolationLevel.ReadCommitted:
-				isolationLevel = System.Data.IsolationLevel.ReadCommitted;
-				break;
-			case IsolationLevel.ReadUncommitted:
-				isolationLevel = System.Data.IsolationLevel.ReadUncommitted;
-				break;
-			case IsolationLevel.Snapshot:
-				isolationLevel = System.Data.IsolationLevel.Snapshot;
-				break;
-			case IsolationLevel.Chaos:
-				isolationLevel = System.Data.IsolationLevel.Chaos;
-				break;
-			case IsolationLevel.Unspecified:
-			default:
-				isolationLevel = System.Data.IsolationLevel.Unspecified;
-				break;
-			}
+				IsolationLevel.Serializable => System.Data.IsolationLevel.Serializable,
+				IsolationLevel.RepeatableRead => System.Data.IsolationLevel.RepeatableRead,
+				IsolationLevel.ReadCommitted => System.Data.IsolationLevel.ReadCommitted,
+				IsolationLevel.ReadUncommitted => System.Data.IsolationLevel.ReadUncommitted,
+				IsolationLevel.Snapshot => System.Data.IsolationLevel.Snapshot,
+				IsolationLevel.Chaos => System.Data.IsolationLevel.Chaos,
+				IsolationLevel.Unspecified => System.Data.IsolationLevel.Unspecified,
+				_ => System.Data.IsolationLevel.Unspecified
+			};
 			m_transaction = Connection.BeginTransaction(isolationLevel);
 		}
 

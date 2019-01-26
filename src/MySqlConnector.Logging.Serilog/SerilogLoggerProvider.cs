@@ -36,26 +36,16 @@ namespace MySqlConnector.Logging
                 }
             }
 
-            private static LogEventLevel GetLevel(MySqlConnectorLogLevel level)
-            {
-                switch (level)
-                {
-                    case MySqlConnectorLogLevel.Trace:
-                        return LogEventLevel.Verbose;
-                    case MySqlConnectorLogLevel.Debug:
-                        return LogEventLevel.Debug;
-                    case MySqlConnectorLogLevel.Info:
-                        return LogEventLevel.Information;
-                    case MySqlConnectorLogLevel.Warn:
-                        return LogEventLevel.Warning;
-                    case MySqlConnectorLogLevel.Error:
-                        return LogEventLevel.Error;
-                    case MySqlConnectorLogLevel.Fatal:
-                        return LogEventLevel.Fatal;
-                    default:
-                        throw new ArgumentOutOfRangeException(nameof(level), level, "Invalid value for 'level'.");
-                }
-            }
+			private static LogEventLevel GetLevel(MySqlConnectorLogLevel level) => level switch
+			{
+				MySqlConnectorLogLevel.Trace => LogEventLevel.Verbose,
+				MySqlConnectorLogLevel.Debug => LogEventLevel.Debug,
+				MySqlConnectorLogLevel.Info => LogEventLevel.Information,
+				MySqlConnectorLogLevel.Warn => LogEventLevel.Warning,
+				MySqlConnectorLogLevel.Error => LogEventLevel.Error,
+				MySqlConnectorLogLevel.Fatal => LogEventLevel.Fatal,
+				_ => throw new ArgumentOutOfRangeException(nameof(level), level, "Invalid value for 'level'."),
+			};
 
 			static readonly Regex tokenReplacer = new Regex(@"((\w+)?\s?(?:=|:)?\s?'?)\{(?:\d+)(\:\w+)?\}('?)", RegexOptions.Compiled);
 

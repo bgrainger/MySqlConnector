@@ -47,32 +47,18 @@ namespace MySql.Data.MySqlClient
 				throw new InvalidOperationException("Cannot begin a transaction when already enlisted in a transaction.");
 #endif
 
-			string isolationLevelValue;
-			switch (isolationLevel)
+			string isolationLevelValue = isolationLevel switch
 			{
-			case IsolationLevel.ReadUncommitted:
-				isolationLevelValue = "read uncommitted";
-				break;
+				IsolationLevel.ReadUncommitted => "read uncommitted",
+				IsolationLevel.ReadCommitted => "read committed",
+				IsolationLevel.RepeatableRead => "repeatable read",
+				IsolationLevel.Serializable => "serializable",
 
-			case IsolationLevel.ReadCommitted:
-				isolationLevelValue = "read committed";
-				break;
+				// "In terms of the SQL:1992 transaction isolation levels, the default InnoDB level is REPEATABLE READ." - http://dev.mysql.com/doc/refman/5.7/en/innodb-transaction-model.html
+				IsolationLevel.Unspecified => "repeatable read",
 
-			case IsolationLevel.Unspecified:
-			// "In terms of the SQL:1992 transaction isolation levels, the default InnoDB level is REPEATABLE READ." - http://dev.mysql.com/doc/refman/5.7/en/innodb-transaction-model.html
-			case IsolationLevel.RepeatableRead:
-				isolationLevelValue = "repeatable read";
-				break;
-
-			case IsolationLevel.Serializable:
-				isolationLevelValue = "serializable";
-				break;
-
-			case IsolationLevel.Chaos:
-			case IsolationLevel.Snapshot:
-			default:
-				throw new NotSupportedException("IsolationLevel.{0} is not supported.".FormatInvariant(isolationLevel));
-			}
+				_ => throw new NotSupportedException("IsolationLevel.{0} is not supported.".FormatInvariant(isolationLevel))
+			};
 
 			using (var cmd = new MySqlCommand("set transaction isolation level " + isolationLevelValue + "; start transaction;", this))
 				await cmd.ExecuteNonQueryAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
