@@ -44,8 +44,8 @@ namespace MySql.Data.MySqlClient
 
 		public override Task<bool> NextResultAsync(CancellationToken cancellationToken)
 		{
-			Command.ResetCommandTimeout();
-			return NextResultAsync(Command.Connection.AsyncIOBehavior, cancellationToken);
+			Command?.ResetCommandTimeout();
+			return NextResultAsync(Command?.Connection?.AsyncIOBehavior ?? IOBehavior.Asynchronous, cancellationToken);
 		}
 
 		internal async Task<bool> NextResultAsync(IOBehavior ioBehavior, CancellationToken cancellationToken)
@@ -85,7 +85,7 @@ namespace MySql.Data.MySqlClient
 				// for any exception not created from an ErrorPayload, mark the session as failed (because we can't guarantee that all data
 				// has been read from the connection and that the socket is still usable)
 				if (mySqlException?.SqlState == null)
-					Command.Connection.Session.SetFailed(resultSet.ReadResultSetHeaderException);
+					Command.Connection.SetSessionFailed(resultSet.ReadResultSetHeaderException);
 
 				throw mySqlException != null ?
 					new MySqlException(mySqlException.Number, mySqlException.SqlState, mySqlException.Message, mySqlException) :
@@ -413,7 +413,7 @@ namespace MySql.Data.MySqlClient
 			{
 				m_closed = true;
 
-				if (m_resultSet != null)
+				if (m_resultSet != null && Command.Connection.State == ConnectionState.Open)
 				{
 					Command.Connection.Session.SetTimeout(Constants.InfiniteTimeout);
 					try

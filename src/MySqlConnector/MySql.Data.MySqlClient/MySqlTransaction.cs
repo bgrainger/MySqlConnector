@@ -76,7 +76,7 @@ namespace MySql.Data.MySqlClient
 					m_isDisposed = true;
 					if (Connection?.CurrentTransaction == this)
 					{
-						if (Connection!.Session.IsConnected)
+						if (Connection.State == ConnectionState.Open && Connection.Session.IsConnected)
 						{
 							using var cmd = new MySqlCommand("rollback", Connection, this);
 							cmd.ExecuteNonQuery();

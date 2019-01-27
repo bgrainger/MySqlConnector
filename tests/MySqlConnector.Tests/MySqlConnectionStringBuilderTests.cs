@@ -182,6 +182,40 @@ namespace MySqlConnector.Tests
 			var csb = new MySqlConnectionStringBuilder("ssl mode=invalid;");
 			Assert.Throws<InvalidOperationException>(() => csb.SslMode);
 		}
+
+		[Fact]
+		public void ConstructWithNull()
+		{
+			var csb = new MySqlConnectionStringBuilder(default(string));
+			Assert.Equal("", csb.ConnectionString);
+		}
 #endif
+
+		[Fact]
+		public void ConstructWithEmptyString()
+		{
+			var csb = new MySqlConnectionStringBuilder("");
+			Assert.Equal("", csb.ConnectionString);
+		}
+
+		[Fact]
+		public void SetConnectionStringToNull()
+		{
+			var csb = new MySqlConnectionStringBuilder
+			{
+				ConnectionString = null,
+			};
+			Assert.Equal("", csb.ConnectionString);
+		}
+
+		[Fact]
+		public void SetConnectionStringToEmptyString()
+		{
+			var csb = new MySqlConnectionStringBuilder
+			{
+				ConnectionString = "",
+			};
+			Assert.Equal("", csb.ConnectionString);
+		}
 	}
 }

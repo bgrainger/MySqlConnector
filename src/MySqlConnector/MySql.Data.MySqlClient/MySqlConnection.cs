@@ -17,7 +17,7 @@ namespace MySql.Data.MySqlClient
 	public sealed class MySqlConnection : DbConnection
 	{
 		public MySqlConnection()
-			: this("")
+			: this(default)
 		{
 		}
 
@@ -251,7 +251,7 @@ namespace MySql.Data.MySqlClient
 				if (m_connectionState == ConnectionState.Open)
 					throw new InvalidOperationException("Cannot change the connection string on an open connection.");
 				m_hasBeenOpened = false;
-				m_connectionString = value;
+				m_connectionString = value ?? "";
 			}
 		}
 
@@ -261,9 +261,9 @@ namespace MySql.Data.MySqlClient
 
 		public override string DataSource => GetConnectionSettings().ConnectionStringBuilder.Server;
 
-		public override string ServerVersion => m_session.ServerVersion.OriginalString;
+		public override string ServerVersion => Session.ServerVersion.OriginalString;
 
-		public int ServerThread => m_session.ConnectionId;
+		public int ServerThread => Session.ConnectionId;
 
 		public static void ClearPool(MySqlConnection connection) => ClearPoolAsync(connection, IOBehavior.Synchronous, CancellationToken.None).GetAwaiter().GetResult();
 		public static Task ClearPoolAsync(MySqlConnection connection) => ClearPoolAsync(connection, connection.AsyncIOBehavior, CancellationToken.None);
@@ -329,9 +329,13 @@ namespace MySql.Data.MySqlClient
 			get
 			{
 				VerifyNotDisposed();
+				if (m_session == null || State != ConnectionState.Open)
+					throw new InvalidOperationException($"Connection must be Open but was {State}.");
 				return m_session;
 			}
 		}
+
+		internal void SetSessionFailed(Exception exception) => m_session.SetFailed(exception);
 
 		internal void Cancel(MySqlCommand command)
 		{
