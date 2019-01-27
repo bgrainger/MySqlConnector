@@ -43,7 +43,7 @@ namespace MySqlConnector.Core
 			else
 				m_sessionSemaphore.Wait(cancellationToken);
 
-			ServerSession session = null;
+			ServerSession? session = null;
 			try
 			{
 				// check for a waiting session
@@ -211,12 +211,12 @@ namespace MySqlConnector.Core
 		/// object is shared between multiple threads and is only safe to use after taking a <c>lock</c> on the
 		/// object itself.
 		/// </summary>
-		public Dictionary<string, CachedProcedure> GetProcedureCache()
+		public Dictionary<string, CachedProcedure?> GetProcedureCache()
 		{
 			var procedureCache = m_procedureCache;
 			if (procedureCache == null)
 			{
-				var newProcedureCache = new Dictionary<string, CachedProcedure>();
+				var newProcedureCache = new Dictionary<string, CachedProcedure?>();
 				procedureCache = Interlocked.CompareExchange(ref m_procedureCache, newProcedureCache, null) ?? newProcedureCache;
 			}
 			return procedureCache;
@@ -235,7 +235,7 @@ namespace MySqlConnector.Core
 				m_lastRecoveryTime = unchecked((uint) Environment.TickCount);
 				foreach (var session in m_leasedSessions.Values)
 				{
-					if (!session.OwningConnection.TryGetTarget(out var _))
+					if (!session.OwningConnection!.TryGetTarget(out var _))
 						recoveredSessions.Add(session);
 				}
 			}
@@ -281,7 +281,7 @@ namespace MySqlConnector.Core
 					try
 					{
 						// check for a waiting session
-						ServerSession session = null;
+						ServerSession? session = null;
 						lock (m_sessions)
 						{
 							if (m_sessions.Count > 0)
@@ -360,7 +360,7 @@ namespace MySqlConnector.Core
 			}
 		}
 
-		public static ConnectionPool GetPool(string connectionString)
+		public static ConnectionPool? GetPool(string connectionString)
 		{
 			// check single-entry MRU cache for this exact connection string; most applications have just one
 			// connection string and will get a cache hit here
@@ -403,7 +403,7 @@ namespace MySqlConnector.Core
 			if (pool == newPool)
 			{
 				s_mruCache = new ConnectionStringPool(connectionString, pool);
-				pool.StartReaperTask();
+				pool!.StartReaperTask();
 
 				// if we won the race to create the new pool, also store it under the original connection string
 				if (connectionString != normalizedConnectionString)
@@ -512,14 +512,14 @@ namespace MySqlConnector.Core
 
 		private sealed class ConnectionStringPool
 		{
-			public ConnectionStringPool(string connectionString, ConnectionPool pool)
+			public ConnectionStringPool(string connectionString, ConnectionPool? pool)
 			{
 				ConnectionString = connectionString;
 				Pool = pool;
 			}
 
 			public string ConnectionString { get; }
-			public ConnectionPool Pool { get; }
+			public ConnectionPool? Pool { get; }
 		}
 
 #if !NETSTANDARD1_3
@@ -533,7 +533,7 @@ namespace MySqlConnector.Core
 #endif
 
 		static readonly IMySqlConnectorLogger Log = MySqlConnectorLogManager.CreateLogger(nameof(ConnectionPool));
-		static readonly ConcurrentDictionary<string, ConnectionPool> s_pools = new ConcurrentDictionary<string, ConnectionPool>();
+		static readonly ConcurrentDictionary<string, ConnectionPool?> s_pools = new ConcurrentDictionary<string, ConnectionPool?>();
 
 		static int s_poolId;
 		static ConnectionStringPool s_mruCache;
@@ -543,12 +543,12 @@ namespace MySqlConnector.Core
 		readonly SemaphoreSlim m_sessionSemaphore;
 		readonly LinkedList<ServerSession> m_sessions;
 		readonly Dictionary<string, ServerSession> m_leasedSessions;
-		readonly ILoadBalancer m_loadBalancer;
-		readonly Dictionary<string, int> m_hostSessions;
+		readonly ILoadBalancer? m_loadBalancer;
+		readonly Dictionary<string, int>? m_hostSessions;
 		readonly object[] m_logArguments;
-		Task m_reaperTask;
+		Task? m_reaperTask;
 		uint m_lastRecoveryTime;
 		int m_lastSessionId;
-		Dictionary<string, CachedProcedure> m_procedureCache;
+		Dictionary<string, CachedProcedure?>? m_procedureCache;
 	}
 }

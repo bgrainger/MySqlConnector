@@ -18,6 +18,7 @@ namespace MySqlConnector.Core
 		public ResultSet(MySqlDataReader dataReader)
 		{
 			DataReader = dataReader;
+			m_readBuffer = new Queue<Row>();
 		}
 
 		public async Task<ResultSet> ReadResultSetHeaderAsync(IOBehavior ioBehavior)
@@ -113,7 +114,7 @@ namespace MySqlConnector.Core
 							// 'Session.ReceiveReplyAsync' reuses a shared buffer; make a copy so that the column definitions can always be safely read at any future point
 							if (m_columnDefinitionPayloadUsedBytes + arraySegment.Count > m_columnDefinitionPayloads.Count)
 								Utility.Resize(ref m_columnDefinitionPayloads, m_columnDefinitionPayloadUsedBytes + arraySegment.Count);
-							Buffer.BlockCopy(arraySegment.Array, arraySegment.Offset, m_columnDefinitionPayloads.Array, m_columnDefinitionPayloadUsedBytes, arraySegment.Count);
+							Buffer.BlockCopy(arraySegment.Array, arraySegment.Offset, m_columnDefinitionPayloads.Array!, m_columnDefinitionPayloadUsedBytes, arraySegment.Count);
 
 							var columnDefinition = ColumnDefinitionPayload.Create(new ResizableArraySegment<byte>(m_columnDefinitionPayloads, m_columnDefinitionPayloadUsedBytes, arraySegment.Count));
 							ColumnDefinitions[column] = columnDefinition;
@@ -181,31 +182,31 @@ namespace MySqlConnector.Core
 			return true;
 		}
 
-		public async Task<Row> BufferReadAsync(IOBehavior ioBehavior, CancellationToken cancellationToken)
+		public async Task<Row?> BufferReadAsync(IOBehavior ioBehavior, CancellationToken cancellationToken)
 		{
 			m_rowBuffered = m_rowBuffered?.Clone();
 			// ScanRowAsync sets m_rowBuffered to the next row if there is one
 			if (await ScanRowAsync(ioBehavior, null, cancellationToken).ConfigureAwait(false) == null)
 				return null;
-			m_readBuffer.Enqueue(m_rowBuffered);
+			m_readBuffer.Enqueue(m_rowBuffered!);
 			return m_rowBuffered;
 		}
 
-		private ValueTask<Row> ScanRowAsync(IOBehavior ioBehavior, Row row, CancellationToken cancellationToken)
+		private ValueTask<Row?> ScanRowAsync(IOBehavior ioBehavior, Row? row, CancellationToken cancellationToken)
 		{
 			// if we've already read past the end of this resultset, Read returns false
 			if (BufferState == ResultSetState.HasMoreData || BufferState == ResultSetState.NoMoreData || BufferState == ResultSetState.None)
-				return new ValueTask<Row>((Row) null);
+				return new ValueTask<Row?>(default(Row));
 
 			using (Command.RegisterCancel(cancellationToken))
 			{
 				var payloadValueTask = Session.ReceiveReplyAsync(ioBehavior, CancellationToken.None);
 				return payloadValueTask.IsCompletedSuccessfully
-					? new ValueTask<Row>(ScanRowAsyncRemainder(this, payloadValueTask.Result, row))
-					: new ValueTask<Row>(ScanRowAsyncAwaited(this, payloadValueTask.AsTask(), row, cancellationToken));
+					? new ValueTask<Row?>(ScanRowAsyncRemainder(this, payloadValueTask.Result, row))
+					: new ValueTask<Row?>(ScanRowAsyncAwaited(this, payloadValueTask.AsTask(), row, cancellationToken));
 			}
 
-			static async Task<Row> ScanRowAsyncAwaited(ResultSet this_, Task<PayloadData> payloadTask, Row row_, CancellationToken token)
+			static async Task<Row?> ScanRowAsyncAwaited(ResultSet this_, Task<PayloadData> payloadTask, Row? row_, CancellationToken token)
 			{
 				PayloadData payloadData;
 				try
@@ -222,7 +223,7 @@ namespace MySqlConnector.Core
 				return ScanRowAsyncRemainder(this_, payloadData, row_);
 			}
 
-			static Row ScanRowAsyncRemainder(ResultSet this_, PayloadData payload, Row row_)
+			static Row? ScanRowAsyncRemainder(ResultSet this_, PayloadData payload, Row? row_)
 			{
 				if (payload.HeaderByte == EofPayload.Signature)
 				{
@@ -266,10 +267,10 @@ namespace MySqlConnector.Core
 
 		public string GetDataTypeName(int ordinal)
 		{
-			if (ordinal < 0 || ordinal > ColumnDefinitions.Length)
-				throw new ArgumentOutOfRangeException(nameof(ordinal), "value must be between 0 and {0}.".FormatInvariant(ColumnDefinitions.Length));
+			if (ordinal < 0 || ordinal > ColumnDefinitions!.Length)
+				throw new ArgumentOutOfRangeException(nameof(ordinal), "value must be between 0 and {0}.".FormatInvariant(ColumnDefinitions!.Length));
 
-			var mySqlDbType = ColumnTypes[ordinal];
+			var mySqlDbType = ColumnTypes![ordinal];
 			if (mySqlDbType == MySqlDbType.String)
 				return string.Format(CultureInfo.InvariantCulture, "CHAR({0})", ColumnDefinitions[ordinal].ColumnLength / ProtocolUtility.GetBytesPerCharacter(ColumnDefinitions[ordinal].CharacterSet));
 			return TypeMapper.Instance.GetColumnTypeMetadata(mySqlDbType).SimpleDataTypeName;
@@ -277,7 +278,7 @@ namespace MySqlConnector.Core
 
 		public Type GetFieldType(int ordinal)
 		{
-			if (ordinal < 0 || ordinal > ColumnDefinitions.Length)
+			if (ordinal < 0 || ordinal > ColumnDefinitions!.Length)
 				throw new ArgumentOutOfRangeException(nameof(ordinal), "value must be between 0 and {0}.".FormatInvariant(ColumnDefinitions.Length));
 
 			var type = TypeMapper.Instance.GetColumnTypeMetadata(ColumnTypes[ordinal]).DbTypeMapping.ClrType;
@@ -320,24 +321,24 @@ namespace MySqlConnector.Core
 		}
 
 		public readonly MySqlDataReader DataReader;
-		public Exception ReadResultSetHeaderException { get; private set; }
+		public Exception? ReadResultSetHeaderException { get; private set; }
 		public MySqlCommand Command => DataReader.Command;
 		public MySqlConnection Connection => DataReader.Connection;
 		public ServerSession Session => DataReader.Session;
 
 		public ResultSetState BufferState { get; private set; }
-		public ColumnDefinitionPayload[] ColumnDefinitions { get; private set; }
-		public MySqlDbType[] ColumnTypes { get; private set; }
+		public ColumnDefinitionPayload[]? ColumnDefinitions { get; private set; }
+		public MySqlDbType[]? ColumnTypes { get; private set; }
 		public long LastInsertId { get; private set; }
 		public int? RecordsAffected { get; private set; }
 		public int WarningCount { get; private set; }
 		public ResultSetState State { get; private set; }
 
-		ResizableArray<byte> m_columnDefinitionPayloads;
+		ResizableArray<byte>? m_columnDefinitionPayloads;
 		int m_columnDefinitionPayloadUsedBytes;
-		readonly Queue<Row> m_readBuffer = new Queue<Row>();
-		Row m_row;
-		Row m_rowBuffered;
+		readonly Queue<Row> m_readBuffer;
+		Row? m_row;
+		Row? m_rowBuffered;
 		bool m_hasRows;
 	}
 }

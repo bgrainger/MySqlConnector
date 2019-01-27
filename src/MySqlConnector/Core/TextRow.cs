@@ -134,7 +134,7 @@ namespace MySqlConnector.Core
 
 		private object ParseDateTime(ReadOnlySpan<byte> value)
 		{
-			Exception exception = null;
+			Exception? exception = null;
 			if (!Utf8Parser.TryParse(value, out int year, out var bytesConsumed) || bytesConsumed != 4)
 				goto InvalidDateTime;
 			if (value.Length < 5 || value[4] != 45)
@@ -204,7 +204,7 @@ namespace MySqlConnector.Core
 				exception = ex;
 			}
 
-			InvalidDateTime:
+InvalidDateTime:
 			throw new FormatException("Couldn't interpret '{0}' as a valid DateTime".FormatInvariant(Encoding.UTF8.GetString(value)), exception);
 		}
 	}

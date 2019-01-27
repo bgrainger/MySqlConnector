@@ -15,10 +15,10 @@ namespace MySqlConnector.Core
 			m_data = data;
 			if (m_dataOffsets == null)
 			{
-				m_dataOffsets = new int[ResultSet.ColumnDefinitions.Length];
-				m_dataLengths = new int[ResultSet.ColumnDefinitions.Length];
+				m_dataOffsets = new int[ColumnDefinitions.Length];
+				m_dataLengths = new int[ColumnDefinitions.Length];
 			}
-			GetDataOffsets(m_data.AsSpan(), m_dataOffsets, m_dataLengths);
+			GetDataOffsets(m_data.AsSpan(), m_dataOffsets, m_dataLengths!);
 		}
 
 		public Row Clone()
@@ -32,14 +32,14 @@ namespace MySqlConnector.Core
 
 		public object GetValue(int ordinal)
 		{
-			if (ordinal < 0 || ordinal > ResultSet.ColumnDefinitions.Length)
-				throw new ArgumentOutOfRangeException(nameof(ordinal), "value must be between 0 and {0}.".FormatInvariant(ResultSet.ColumnDefinitions.Length));
+			if (ordinal < 0 || ordinal > ColumnDefinitions.Length)
+				throw new ArgumentOutOfRangeException(nameof(ordinal), "value must be between 0 and {0}.".FormatInvariant(ColumnDefinitions.Length));
 
-			if (m_dataOffsets[ordinal] == -1)
+			if (m_dataOffsets![ordinal] == -1)
 				return DBNull.Value;
 
-			var data = new ReadOnlySpan<byte>(m_data.Array, m_data.Offset + m_dataOffsets[ordinal], m_dataLengths[ordinal]);
-			var columnDefinition = ResultSet.ColumnDefinitions[ordinal];
+			var data = new ReadOnlySpan<byte>(m_data.Array, m_data.Offset + m_dataOffsets[ordinal], m_dataLengths![ordinal]);
+			var columnDefinition = ColumnDefinitions[ordinal];
 			return GetValueCore(data, columnDefinition);
 		}
 
@@ -72,7 +72,7 @@ namespace MySqlConnector.Core
 
 		public byte GetByte(int ordinal) => (byte) GetValue(ordinal);
 
-		public long GetBytes(int ordinal, long dataOffset, byte[] buffer, int bufferOffset, int length)
+		public long GetBytes(int ordinal, long dataOffset, byte[]? buffer, int bufferOffset, int length)
 		{
 			CheckBinaryColumn(ordinal);
 
@@ -80,14 +80,14 @@ namespace MySqlConnector.Core
 			{
 				// this isn't required by the DbDataReader.GetBytes API documentation, but is what mysql-connector-net does
 				// (as does SqlDataReader: http://msdn.microsoft.com/en-us/library/system.data.sqlclient.sqldatareader.getbytes.aspx)
-				return m_dataLengths[ordinal];
+				return m_dataLengths![ordinal];
 			}
 
 			CheckBufferArguments(dataOffset, buffer, bufferOffset, length);
 
 			var offset = (int) dataOffset;
-			var lengthToCopy = Math.Max(0, Math.Min(m_dataLengths[ordinal] - offset, length));
-			Buffer.BlockCopy(m_data.Array, m_data.Offset + m_dataOffsets[ordinal] + offset, buffer, bufferOffset, lengthToCopy);
+			var lengthToCopy = Math.Max(0, Math.Min(m_dataLengths![ordinal] - offset, length));
+			Buffer.BlockCopy(m_data.Array, m_data.Offset + m_dataOffsets![ordinal] + offset, buffer, bufferOffset, lengthToCopy);
 			return lengthToCopy;
 		}
 
@@ -97,7 +97,7 @@ namespace MySqlConnector.Core
 			return stringValue.Length > 0 ? stringValue[0] : throw new InvalidCastException();
 		}
 
-		public long GetChars(int ordinal, long dataOffset, char[] buffer, int bufferOffset, int length)
+		public long GetChars(int ordinal, long dataOffset, char[]? buffer, int bufferOffset, int length)
 		{
 			var value = GetString(ordinal);
 			if (buffer == null)
@@ -290,7 +290,7 @@ namespace MySqlConnector.Core
 		public Stream GetStream(int ordinal)
 		{
 			CheckBinaryColumn(ordinal);
-			return new MemoryStream(m_data.Array, m_data.Offset + m_dataOffsets[ordinal], m_dataLengths[ordinal], false);
+			return new MemoryStream(m_data.Array, m_data.Offset + m_dataOffsets![ordinal], m_dataLengths![ordinal], false);
 		}
 
 		public string GetString(int ordinal) => (string) GetValue(ordinal);
@@ -315,13 +315,13 @@ namespace MySqlConnector.Core
 
 		public int GetValues(object[] values)
 		{
-			int count = Math.Min(values.Length, ResultSet.ColumnDefinitions.Length);
+			int count = Math.Min(values.Length, ColumnDefinitions.Length);
 			for (int i = 0; i < count; i++)
 				values[i] = GetValue(i);
 			return count;
 		}
 
-		public bool IsDBNull(int ordinal) => m_dataOffsets[ordinal] == -1;
+		public bool IsDBNull(int ordinal) => m_dataOffsets![ordinal] == -1;
 
 		public object this[int ordinal] => GetValue(ordinal);
 
@@ -336,6 +336,7 @@ namespace MySqlConnector.Core
 		protected abstract void GetDataOffsets(ReadOnlySpan<byte> data, int[] dataOffsets, int[] dataLengths);
 
 		protected ResultSet ResultSet { get; }
+		protected ColumnDefinitionPayload[] ColumnDefinitions => ResultSet.ColumnDefinitions!;
 		protected MySqlConnection Connection => ResultSet.Connection;
 
 		protected static Guid CreateGuidFromBytes(MySqlGuidFormat guidFormat, ReadOnlySpan<byte> bytes)
@@ -366,10 +367,10 @@ namespace MySqlConnector.Core
 
 		private void CheckBinaryColumn(int ordinal)
 		{
-			if (m_dataOffsets[ordinal] == -1)
+			if (m_dataOffsets![ordinal] == -1)
 				throw new InvalidCastException("Column is NULL.");
 
-			var column = ResultSet.ColumnDefinitions[ordinal];
+			var column = ColumnDefinitions[ordinal];
 			var columnType = column.ColumnType;
 			if ((column.ColumnFlags & ColumnFlags.Binary) == 0 ||
 			    (columnType != ColumnType.String && columnType != ColumnType.VarString && columnType != ColumnType.TinyBlob &&
@@ -397,7 +398,7 @@ namespace MySqlConnector.Core
 		}
 
 		ArraySegment<byte> m_data;
-		int[] m_dataOffsets;
-		int[] m_dataLengths;
+		int[]? m_dataOffsets;
+		int[]? m_dataLengths;
 	}
 }

@@ -97,26 +97,26 @@ namespace MySql.Data.MySqlClient
 			m_hasWarnings = resultSet.WarningCount != 0;
 		}
 
-		private ValueTask<ResultSet> ScanResultSetAsync(IOBehavior ioBehavior, ResultSet resultSet, CancellationToken cancellationToken)
+		private ValueTask<ResultSet?> ScanResultSetAsync(IOBehavior ioBehavior, ResultSet resultSet, CancellationToken cancellationToken)
 		{
 			if (m_resultSetBuffered == null)
-				return new ValueTask<ResultSet>((ResultSet)null);
+				return new ValueTask<ResultSet?>(default(ResultSet));
 
 			if (m_resultSetBuffered.BufferState == ResultSetState.NoMoreData || m_resultSetBuffered.BufferState == ResultSetState.None)
 			{
 				m_resultSetBuffered = null;
-				return new ValueTask<ResultSet>((ResultSet)null);
+				return new ValueTask<ResultSet?>(default(ResultSet));
 			}
 
 			if (m_resultSetBuffered.BufferState != ResultSetState.HasMoreData)
 				throw new InvalidOperationException("Invalid state: {0}".FormatInvariant(m_resultSetBuffered.State));
 
-			if (resultSet == null)
+			if (resultSet is null)
 				resultSet = new ResultSet(this);
-			return new ValueTask<ResultSet>(ScanResultSetAsyncAwaited(ioBehavior, resultSet, cancellationToken));
+			return new ValueTask<ResultSet?>(ScanResultSetAsyncAwaited(ioBehavior, resultSet, cancellationToken));
 		}
 
-		private async Task<ResultSet> ScanResultSetAsyncAwaited(IOBehavior ioBehavior, ResultSet resultSet, CancellationToken cancellationToken)
+		private async Task<ResultSet?> ScanResultSetAsyncAwaited(IOBehavior ioBehavior, ResultSet resultSet, CancellationToken cancellationToken)
 		{
 			using (Command.RegisterCancel(cancellationToken))
 			{
@@ -236,7 +236,7 @@ namespace MySql.Data.MySqlClient
 		public override int VisibleFieldCount => FieldCount;
 
 #if !NETSTANDARD1_3
-		public override DataTable GetSchemaTable()
+		public override DataTable? GetSchemaTable()
 		{
 			if (m_schemaTable == null)
 				m_schemaTable = BuildSchemaTable();
@@ -277,10 +277,10 @@ namespace MySql.Data.MySqlClient
 			}
 		}
 
-		internal MySqlCommand Command { get; private set; }
+		internal MySqlCommand? Command { get; private set; }
 		internal ResultSetProtocol ResultSetProtocol { get; }
-		internal MySqlConnection Connection => Command?.Connection;
-		internal ServerSession Session => Command?.Connection.Session;
+		internal MySqlConnection? Connection => Command?.Connection;
+		internal ServerSession? Session => Command?.Connection.Session;
 
 		internal static async Task<MySqlDataReader> CreateAsync(MySqlCommand command, CommandBehavior behavior, ResultSetProtocol resultSetProtocol, IOBehavior ioBehavior)
 		{
@@ -308,7 +308,7 @@ namespace MySql.Data.MySqlClient
 		}
 
 #if !NETSTANDARD1_3
-		internal DataTable BuildSchemaTable()
+		internal DataTable? BuildSchemaTable()
 		{
 			var colDefinitions = GetResultSet().ColumnDefinitions;
 			if (colDefinitions == null)
@@ -460,10 +460,10 @@ namespace MySql.Data.MySqlClient
 		bool m_closed;
 		int? m_recordsAffected;
 		bool m_hasWarnings;
-		ResultSet m_resultSet;
-		ResultSet m_resultSetBuffered;
+		ResultSet? m_resultSet;
+		ResultSet? m_resultSetBuffered;
 #if !NETSTANDARD1_3
-		DataTable m_schemaTable;
+		DataTable? m_schemaTable;
 #endif
 	}
 }

@@ -6,7 +6,7 @@ namespace MySqlConnector.Core
 	{
 		public static string CreateLookupKey(string columnTypeName, bool isUnsigned, int length) => $"{columnTypeName}|{(isUnsigned ? "u" : "s")}|{length}";
 
-		public ColumnTypeMetadata(string dataTypeName, DbTypeMapping dbTypeMapping, MySqlDbType mySqlDbType, bool isUnsigned = false, bool binary = false, int length = 0, string simpleDataTypeName = null, string createFormat = null, long columnSize = 0)
+		public ColumnTypeMetadata(string dataTypeName, DbTypeMapping dbTypeMapping, MySqlDbType mySqlDbType, bool isUnsigned = false, bool binary = false, int length = 0, string? simpleDataTypeName = null, string? createFormat = null, long columnSize = 0)
 		{
 			DataTypeName = dataTypeName;
 			SimpleDataTypeName = simpleDataTypeName ?? dataTypeName;

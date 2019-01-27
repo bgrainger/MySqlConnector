@@ -20,9 +20,9 @@ namespace MySqlConnector.Protocol.Serialization
 
 		public void Dispose()
 		{
-			Utility.Dispose(ref m_byteHandler);
-			Utility.Dispose(ref m_uncompressedStreamByteHandler);
-			Utility.Dispose(ref m_uncompressedStream);
+			m_byteHandler.Dispose();
+			m_uncompressedStreamByteHandler.Dispose();
+			m_uncompressedStream.Dispose();
 		}
 
 		public void StartNewConversation()

@@ -29,5 +29,7 @@ namespace MySqlConnector.Core
 
 		public string OriginalString { get; }
 		public Version Version { get; }
+
+		public static ServerVersion Zero = new ServerVersion("0.0.0");
 	}
 }

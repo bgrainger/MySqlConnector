@@ -4,6 +4,8 @@ using System.IO;
 using MySql.Data.MySqlClient;
 using MySqlConnector.Utilities;
 
+#nullable disable
+
 namespace MySqlConnector.Core
 {
 	internal sealed class ConnectionSettings

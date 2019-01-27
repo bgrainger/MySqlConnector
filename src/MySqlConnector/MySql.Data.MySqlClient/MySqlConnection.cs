@@ -153,7 +153,7 @@ namespace MySql.Data.MySqlClient
 			return session;
 		}
 
-		ImplicitTransactionBase m_implicitTransaction;
+		ImplicitTransactionBase? m_implicitTransaction;
 #endif
 
 		public override void Close() => DoClose(changeState: true);
@@ -303,7 +303,7 @@ namespace MySql.Data.MySqlClient
 			return m_schemaProvider;
 		}
 
-		SchemaProvider m_schemaProvider;
+		SchemaProvider? m_schemaProvider;
 #endif
 
 		public override int ConnectionTimeout => m_connectionSettings.ConnectionTimeout;
@@ -344,8 +344,8 @@ namespace MySql.Data.MySqlClient
 				// open a dedicated connection to the server to kill the active query
 				var csb = new MySqlConnectionStringBuilder(m_connectionString);
 				csb.Pooling = false;
-				if (m_session.IPAddress != null)
-					csb.Server = m_session.IPAddress.ToString();
+				if (session.IPAddress != null)
+					csb.Server = session.IPAddress.ToString();
 				csb.ConnectionTimeout = 3u;
 
 				using var connection = new MySqlConnection(csb.ConnectionString);
@@ -356,12 +356,12 @@ namespace MySql.Data.MySqlClient
 			catch (MySqlException ex)
 			{
 				// cancelling the query failed; setting the state back to 'Querying' will allow another call to 'Cancel' to try again
-				Log.Warn(ex, "Session{0} cancelling command {1} failed", m_session.Id, command.CommandId);
+				Log.Warn(ex, "Session{0} cancelling command {1} failed", session.Id, command.CommandId);
 				session.AbortCancel(command);
 			}
 		}
 
-		internal async Task<CachedProcedure> GetCachedProcedure(IOBehavior ioBehavior, string name, CancellationToken cancellationToken)
+		internal async Task<CachedProcedure?> GetCachedProcedure(IOBehavior ioBehavior, string name, CancellationToken cancellationToken)
 		{
 			if (Log.IsDebugEnabled())
 				Log.Debug("Session{0} getting cached procedure Name={1}", m_session.Id, name);
@@ -416,7 +416,7 @@ namespace MySql.Data.MySqlClient
 			return cachedProcedure;
 		}
 
-		internal MySqlTransaction CurrentTransaction { get; set; }
+		internal MySqlTransaction? CurrentTransaction { get; set; }
 		internal bool AllowUserVariables => m_connectionSettings.AllowUserVariables;
 		internal bool AllowZeroDateTime => m_connectionSettings.AllowZeroDateTime;
 		internal bool ConvertZeroDateTime => m_connectionSettings.ConvertZeroDateTime;
@@ -470,8 +470,8 @@ namespace MySql.Data.MySqlClient
 			m_connectionSettings = pool?.ConnectionSettings ?? new ConnectionSettings(new MySqlConnectionStringBuilder(m_connectionString));
 			var actualIOBehavior = ioBehavior ?? (m_connectionSettings.ForceSynchronous ? IOBehavior.Synchronous : IOBehavior.Asynchronous);
 
-			CancellationTokenSource timeoutSource = null;
-			CancellationTokenSource linkedSource = null;
+			CancellationTokenSource? timeoutSource = null;
+			CancellationTokenSource? linkedSource = null;
 			try
 			{
 				// the cancellation token for connection is controlled by 'cancellationToken' (if it can be cancelled), ConnectionTimeout
@@ -621,14 +621,14 @@ namespace MySql.Data.MySqlClient
 		static readonly Dictionary<System.Transactions.Transaction, MySqlConnection> s_transactionConnections = new Dictionary<System.Transactions.Transaction, MySqlConnection>();
 #endif
 
-		string m_connectionString;
-		ConnectionSettings m_connectionSettings;
-		ServerSession m_session;
+		string? m_connectionString;
+		ConnectionSettings? m_connectionSettings;
+		ServerSession? m_session;
 		ConnectionState m_connectionState;
 		bool m_hasBeenOpened;
 		bool m_isDisposed;
 		bool m_shouldCloseWhenUnenlisted;
-		Dictionary<string, CachedProcedure> m_cachedProcedures;
-		MySqlDataReader m_activeReader;
+		Dictionary<string, CachedProcedure?>? m_cachedProcedures;
+		MySqlDataReader? m_activeReader;
 	}
 }

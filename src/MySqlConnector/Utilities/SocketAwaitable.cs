@@ -41,6 +41,6 @@ namespace MySqlConnector.Utilities
 
 		static readonly Action s_sentinel = () => { };
 
-		Action m_continuation;
+		Action? m_continuation;
 	}
 }

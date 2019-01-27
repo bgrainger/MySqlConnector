@@ -21,7 +21,7 @@ namespace MySqlConnector.Core
 			m_preparedStatements = preparedStatements;
 		}
 
-		public async Task<DbDataReader> ExecuteReaderAsync(string commandText, MySqlParameterCollection parameterCollection, CommandBehavior behavior, IOBehavior ioBehavior, CancellationToken cancellationToken)
+		public async Task<DbDataReader> ExecuteReaderAsync(string commandText, MySqlParameterCollection? parameterCollection, CommandBehavior behavior, IOBehavior ioBehavior, CancellationToken cancellationToken)
 		{
 			cancellationToken.ThrowIfCancellationRequested();
 			if (Log.IsDebugEnabled())
@@ -49,7 +49,7 @@ namespace MySqlConnector.Core
 			}
 		}
 
-		private PayloadData CreateQueryPayload(PreparedStatement preparedStatement, MySqlParameterCollection parameterCollection, MySqlGuidFormat guidFormat)
+		private PayloadData CreateQueryPayload(PreparedStatement preparedStatement, MySqlParameterCollection? parameterCollection, MySqlGuidFormat guidFormat)
 		{
 			var writer = new ByteBufferWriter();
 			writer.Write((byte) CommandKind.StatementExecute);
@@ -70,7 +70,7 @@ namespace MySqlConnector.Core
 						throw new MySqlException("Parameter '{0}' must be defined.".FormatInvariant(parameterName));
 					else if (parameterIndex < 0 || parameterIndex >= (parameterCollection?.Count ?? 0))
 						throw new MySqlException("Parameter index {0} is invalid when only {1} parameter{2} defined.".FormatInvariant(parameterIndex, parameterCollection?.Count ?? 0, parameterCollection?.Count == 1 ? " is" : "s are"));
-					parameters[i] = parameterCollection[parameterIndex];
+					parameters[i] = parameterCollection![parameterIndex];
 				}
 
 				// write null bitmap

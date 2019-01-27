@@ -27,6 +27,6 @@ namespace MySqlConnector.Logging
 		/// <remarks>This method may be called from multiple threads and must be thread-safe. This method may be called
 		/// even if <see cref="IsEnabled"/> would return <c>false</c> for <paramref name="level"/>; the implementation must
 		/// check if logging is enabled for that level.</remarks>
-		void Log(MySqlConnectorLogLevel level, string message, object[] args = null, Exception exception = null);
+		void Log(MySqlConnectorLogLevel level, string message, object?[]? args = null, Exception? exception = null);
 	}
 }

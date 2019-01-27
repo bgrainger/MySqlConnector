@@ -37,7 +37,7 @@ namespace MySqlConnector.Protocol.Payloads
 		public static PayloadData CreateWithSsl(ProtocolCapabilities serverCapabilities, ConnectionSettings cs, bool useCompression, CharacterSet characterSet) =>
 			CreateCapabilitiesPayload(serverCapabilities, cs, useCompression, characterSet, ProtocolCapabilities.Ssl).ToPayloadData();
 
-		public static PayloadData Create(InitialHandshakePayload handshake, ConnectionSettings cs, bool useCompression, CharacterSet characterSet, byte[] connectionAttributes)
+		public static PayloadData Create(InitialHandshakePayload handshake, ConnectionSettings cs, bool useCompression, CharacterSet characterSet, byte[]? connectionAttributes)
 		{
 			// TODO: verify server capabilities
 			var writer = CreateCapabilitiesPayload(handshake.ProtocolCapabilities, cs, useCompression, characterSet);

@@ -15,7 +15,7 @@ namespace MySqlConnector.Utilities
 {
 	internal static class Utility
 	{
-		public static void Dispose<T>(ref T disposable)
+		public static void Dispose<T>(ref T? disposable)
 			where T : class, IDisposable
 		{
 			if (disposable != null)
@@ -25,7 +25,7 @@ namespace MySqlConnector.Utilities
 			}
 		}
 
-		public static string FormatInvariant(this string format, params object[] args) =>
+		public static string FormatInvariant(this string format, params object?[] args) =>
 			string.Format(CultureInfo.InvariantCulture, format, args);
 
 #if NET45 || NET461 || NET471 || NETSTANDARD1_3 || NETSTANDARD2_0
@@ -230,9 +230,9 @@ namespace MySqlConnector.Utilities
 		/// Resizes <paramref name="resizableArray"/> to hold at least <paramref name="newLength"/> items.
 		/// </summary>
 		/// <remarks><paramref name="resizableArray"/> may be <c>null</c>, in which case a new <see cref="ResizableArray{T}"/> will be allocated.</remarks>
-		public static void Resize<T>(ref ResizableArray<T> resizableArray, int newLength)
+		public static void Resize<T>(ref ResizableArray<T>? resizableArray, int newLength)
 		{
-			if (resizableArray == null)
+			if (resizableArray is null)
 				resizableArray = new ResizableArray<T>();
 			resizableArray.DoResize(newLength);
 		}
@@ -381,7 +381,7 @@ namespace MySqlConnector.Utilities
 			}
 		}
 
-		public static void GetOSDetails(out string os, out string osDescription, out string architecture)
+		public static void GetOSDetails(out string? os, out string osDescription, out string architecture)
 		{
 			os = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "Windows" :
 				RuntimeInformation.IsOSPlatform(OSPlatform.Linux) ? "Linux" :

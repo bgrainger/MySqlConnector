@@ -16,7 +16,7 @@ namespace MySqlConnector.Core
 {
 	internal sealed class CachedProcedure
 	{
-		public static async Task<CachedProcedure> FillAsync(IOBehavior ioBehavior, MySqlConnection connection, string schema, string component, CancellationToken cancellationToken)
+		public static async Task<CachedProcedure?> FillAsync(IOBehavior ioBehavior, MySqlConnection connection, string schema, string component, CancellationToken cancellationToken)
 		{
 			// try to use mysql.proc first, as it is much faster
 			if (connection.Session.ServerVersion.Version < ServerVersions.RemovesMySqlProcTable && !connection.Session.ProcAccessDenied)
@@ -111,7 +111,7 @@ namespace MySqlConnector.Core
 			Parameters = parameters;
 		}
 
-		internal MySqlParameterCollection AlignParamsWithDb(MySqlParameterCollection parameterCollection)
+		internal MySqlParameterCollection AlignParamsWithDb(MySqlParameterCollection? parameterCollection)
 		{
 			var alignedParams = new MySqlParameterCollection();
 			var returnParam = parameterCollection?.FirstOrDefault(x => x.Direction == ParameterDirection.ReturnValue);
@@ -125,8 +125,8 @@ namespace MySqlConnector.Core
 				}
 				else
 				{
-					var index = parameterCollection?.NormalizedIndexOf(cachedParam.Name) ?? -1;
-					alignParam = index >= 0 ? parameterCollection[index] : throw new ArgumentException($"Parameter '{cachedParam.Name}' not found in the collection.");
+					var index = parameterCollection?.NormalizedIndexOf(cachedParam.Name!) ?? -1;
+					alignParam = index >= 0 ? parameterCollection![index] : throw new ArgumentException($"Parameter '{cachedParam.Name}' not found in the collection.");
 				}
 
 				if (!alignParam.HasSetDirection)
@@ -246,7 +246,7 @@ namespace MySqlConnector.Core
 			return sql;
 		}
 
-		private static CachedParameter CreateCachedParameter(int ordinal, string direction, string name, string dataType, bool unsigned, int length, string originalSql)
+		private static CachedParameter CreateCachedParameter(int ordinal, string? direction, string? name, string dataType, bool unsigned, int length, string originalSql)
 		{
 			try
 			{

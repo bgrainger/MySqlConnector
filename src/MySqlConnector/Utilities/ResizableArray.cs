@@ -7,7 +7,7 @@ namespace MySqlConnector.Utilities
 	/// </summary>
 	internal sealed class ResizableArray<T>
 	{
-		public T[] Array => m_array;
+		public T[]? Array => m_array;
 		public int Count => m_array?.Length ?? 0;
 
 		/// <summary>
@@ -19,6 +19,6 @@ namespace MySqlConnector.Utilities
 				System.Array.Resize(ref m_array, Math.Max(length, Count * 2));
 		}
 
-		T[] m_array;
+		T[]? m_array;
 	}
 }

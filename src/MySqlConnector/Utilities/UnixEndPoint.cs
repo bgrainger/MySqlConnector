@@ -121,13 +121,6 @@ namespace MySqlConnector.Utilities
 			return filename.GetHashCode ();
 		}
 
-		public override bool Equals (object o)
-		{
-			UnixEndPoint other = o as UnixEndPoint;
-			if (other == null)
-				return false;
-
-			return (other.filename == filename);
-		}
+		public override bool Equals(object o) => o is UnixEndPoint other && other.filename == filename;
 	}
 }

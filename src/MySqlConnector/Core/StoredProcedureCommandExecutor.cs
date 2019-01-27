@@ -16,24 +16,24 @@ namespace MySqlConnector.Core
 			: base(command)
 		{
 			m_command = command;
+			m_outParams = new MySqlParameterCollection();
+			m_outParamNames = new List<string>();
 		}
 
-		public override async Task<DbDataReader> ExecuteReaderAsync(string commandText, MySqlParameterCollection parameterCollection,
+		public override async Task<DbDataReader> ExecuteReaderAsync(string commandText, MySqlParameterCollection? parameterCollection,
 			CommandBehavior behavior, IOBehavior ioBehavior, CancellationToken cancellationToken)
 		{
 			var cachedProcedure = await m_command.Connection.GetCachedProcedure(ioBehavior, commandText, cancellationToken).ConfigureAwait(false);
 			if (cachedProcedure != null)
 				parameterCollection = cachedProcedure.AlignParamsWithDb(parameterCollection);
 
-			MySqlParameter returnParam = null;
-			m_outParams = new MySqlParameterCollection();
-			m_outParamNames = new List<string>();
+			MySqlParameter? returnParam = null;
 			var inParams = new MySqlParameterCollection();
 			var argParamNames = new List<string>();
 			var inOutSetParams = "";
 			for (var i = 0; i < (parameterCollection?.Count ?? 0); i++)
 			{
-				var param = parameterCollection[i];
+				var param = parameterCollection![i];
 				var inName = "@inParam" + i;
 				var outName = "@outParam" + i;
 				switch (param.Direction)

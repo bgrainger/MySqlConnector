@@ -1,6 +1,5 @@
 using System;
 using System.Threading.Tasks;
-using MySqlConnector.Utilities;
 
 namespace MySqlConnector.Protocol.Serialization
 {
@@ -8,14 +7,14 @@ namespace MySqlConnector.Protocol.Serialization
 	{
 		public StandardPayloadHandler(IByteHandler byteHandler)
 		{
-			ByteHandler = byteHandler;
+			m_byteHandler = byteHandler;
+			m_bufferedByteReader = new BufferedByteReader();
 			m_getNextSequenceNumber = () => m_sequenceNumber++;
 		}
 
 		public void Dispose()
 		{
-			m_bufferedByteReader = null;
-			Utility.Dispose(ref m_byteHandler);
+			m_byteHandler.Dispose();
 		}
 
 		public void StartNewConversation()

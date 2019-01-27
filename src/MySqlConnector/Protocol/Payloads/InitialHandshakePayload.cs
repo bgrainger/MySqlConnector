@@ -11,7 +11,7 @@ namespace MySqlConnector.Protocol.Payloads
 		public byte[] ServerVersion { get; }
 		public int ConnectionId { get; }
 		public byte[] AuthPluginData { get; }
-		public string AuthPluginName { get; }
+		public string? AuthPluginName { get; }
 
 		public static InitialHandshakePayload Create(ReadOnlySpan<byte> span)
 		{
@@ -19,9 +19,9 @@ namespace MySqlConnector.Protocol.Payloads
 			reader.ReadByte(c_protocolVersion);
 			var serverVersion = reader.ReadNullTerminatedByteString();
 			var connectionId = reader.ReadInt32();
-			byte[] authPluginData = null;
+			byte[]? authPluginData = null;
 			var authPluginData1 = reader.ReadByteString(8);
-			string authPluginName = null;
+			string? authPluginName = null;
 			reader.ReadByte(0);
 			var protocolCapabilities = (ProtocolCapabilities) reader.ReadUInt16();
 			if (reader.BytesRemaining > 0)
@@ -51,7 +51,7 @@ namespace MySqlConnector.Protocol.Payloads
 			return new InitialHandshakePayload(protocolCapabilities, serverVersion.ToArray(), connectionId, authPluginData, authPluginName);
 		}
 
-		private InitialHandshakePayload(ProtocolCapabilities protocolCapabilities, byte[] serverVersion, int connectionId, byte[] authPluginData, string authPluginName)
+		private InitialHandshakePayload(ProtocolCapabilities protocolCapabilities, byte[] serverVersion, int connectionId, byte[] authPluginData, string? authPluginName)
 		{
 			ProtocolCapabilities = protocolCapabilities;
 			ServerVersion = serverVersion;

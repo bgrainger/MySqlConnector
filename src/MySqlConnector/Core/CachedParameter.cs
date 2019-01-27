@@ -6,7 +6,7 @@ namespace MySqlConnector.Core
 {
 	internal sealed class CachedParameter
 	{
-		public CachedParameter(int ordinalPosition, string mode, string name, string dataType, bool unsigned, int length)
+		public CachedParameter(int ordinalPosition, string? mode, string? name, string dataType, bool unsigned, int length)
 		{
 			Position = ordinalPosition;
 			if (Position == 0)
@@ -23,7 +23,7 @@ namespace MySqlConnector.Core
 
 		public int Position { get; }
 		public ParameterDirection Direction { get; }
-		public string Name { get; }
+		public string? Name { get; }
 		public MySqlDbType MySqlDbType { get; }
 	}
 }

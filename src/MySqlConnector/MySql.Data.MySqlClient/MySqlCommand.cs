@@ -22,22 +22,22 @@ namespace MySql.Data.MySqlClient
 		{
 		}
 
-		public MySqlCommand(string commandText)
+		public MySqlCommand(string? commandText)
 			: this(commandText, null, null)
 		{
 		}
 
-		public MySqlCommand(MySqlConnection connection, MySqlTransaction transaction)
+		public MySqlCommand(MySqlConnection? connection, MySqlTransaction? transaction)
 			: this(null, connection, transaction)
 		{
 		}
 
-		public MySqlCommand(string commandText, MySqlConnection connection)
+		public MySqlCommand(string? commandText, MySqlConnection? connection)
 			: this(commandText, connection, null)
 		{
 		}
 
-		public MySqlCommand(string commandText, MySqlConnection connection, MySqlTransaction transaction)
+		public MySqlCommand(string? commandText, MySqlConnection? connection, MySqlTransaction? transaction)
 		{
 			GC.SuppressFinalize(this);
 			CommandId = Interlocked.Increment(ref s_commandId);
@@ -105,7 +105,7 @@ namespace MySql.Data.MySqlClient
 			return DoPrepareAsync(ioBehavior, cancellationToken);
 		}
 
-		private bool NeedsPrepare(out Exception exception)
+		private bool NeedsPrepare(out Exception? exception)
 		{
 			exception = null;
 			if (Connection == null)
@@ -117,7 +117,7 @@ namespace MySql.Data.MySqlClient
 			else if (Connection?.HasActiveReader ?? false)
 				exception = new InvalidOperationException("Cannot call Prepare when there is an open DataReader for this command; it must be closed first.");
 
-			if (exception != null || Connection.IgnorePrepare)
+			if (exception != null || Connection!.IgnorePrepare)
 				return false;
 
 			if (CommandType != CommandType.Text)
@@ -127,7 +127,7 @@ namespace MySql.Data.MySqlClient
 			}
 
 			// don't prepare the same SQL twice
-			return Connection.Session.TryGetPreparedStatement(CommandText) == null;
+			return Connection.Session.TryGetPreparedStatement(CommandText!) == null;
 		}
 
 		private async Task DoPrepareAsync(IOBehavior ioBehavior, CancellationToken cancellationToken)
@@ -148,7 +148,7 @@ namespace MySql.Data.MySqlClient
 				var payload = await Connection.Session.ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 				var response = StatementPrepareResponsePayload.Create(payload.AsSpan());
 
-				ColumnDefinitionPayload[] parameters = null;
+				ColumnDefinitionPayload[]? parameters = null;
 				if (response.ParameterCount > 0)
 				{
 					parameters = new ColumnDefinitionPayload[response.ParameterCount];
@@ -156,7 +156,7 @@ namespace MySql.Data.MySqlClient
 					{
 						payload = await Connection.Session.ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 						Utility.Resize(ref columnsAndParameters, columnsAndParametersSize + payload.ArraySegment.Count);
-						Buffer.BlockCopy(payload.ArraySegment.Array, payload.ArraySegment.Offset, columnsAndParameters.Array, columnsAndParametersSize, payload.ArraySegment.Count);
+						Buffer.BlockCopy(payload.ArraySegment.Array, payload.ArraySegment.Offset, columnsAndParameters.Array!, columnsAndParametersSize, payload.ArraySegment.Count);
 						parameters[i] = ColumnDefinitionPayload.Create(new ResizableArraySegment<byte>(columnsAndParameters, columnsAndParametersSize, payload.ArraySegment.Count));
 						columnsAndParametersSize += payload.ArraySegment.Count;
 					}
@@ -167,7 +167,7 @@ namespace MySql.Data.MySqlClient
 					}
 				}
 
-				ColumnDefinitionPayload[] columns = null;
+				ColumnDefinitionPayload[]? columns = null;
 				if (response.ColumnCount > 0)
 				{
 					columns = new ColumnDefinitionPayload[response.ColumnCount];
@@ -175,7 +175,7 @@ namespace MySql.Data.MySqlClient
 					{
 						payload = await Connection.Session.ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 						Utility.Resize(ref columnsAndParameters, columnsAndParametersSize + payload.ArraySegment.Count);
-						Buffer.BlockCopy(payload.ArraySegment.Array, payload.ArraySegment.Offset, columnsAndParameters.Array, columnsAndParametersSize, payload.ArraySegment.Count);
+						Buffer.BlockCopy(payload.ArraySegment.Array, payload.ArraySegment.Offset, columnsAndParameters.Array!, columnsAndParametersSize, payload.ArraySegment.Count);
 						columns[i] = ColumnDefinitionPayload.Create(new ResizableArraySegment<byte>(columnsAndParameters, columnsAndParametersSize, payload.ArraySegment.Count));
 						columnsAndParametersSize += payload.ArraySegment.Count;
 					}
@@ -192,7 +192,7 @@ namespace MySql.Data.MySqlClient
 			Connection.Session.AddPreparedStatement(CommandText, new PreparedStatements(preparedStatements, parsedStatements));
 		}
 
-		public override string CommandText
+		public override string? CommandText
 		{
 			get => m_commandText;
 			set
@@ -205,9 +205,9 @@ namespace MySql.Data.MySqlClient
 
 		public bool IsPrepared => TryGetPreparedStatement() != null;
 
-		public new MySqlTransaction Transaction { get; set; }
+		public new MySqlTransaction? Transaction { get; set; }
 
-		public new MySqlConnection Connection
+		public new MySqlConnection? Connection
 		{
 			get => m_connection;
 			set
@@ -241,18 +241,18 @@ namespace MySql.Data.MySqlClient
 
 		public long LastInsertedId { get; internal set; }
 
-		protected override DbConnection DbConnection
+		protected override DbConnection? DbConnection
 		{
 			get => Connection;
-			set => Connection = (MySqlConnection) value;
+			set => Connection = (MySqlConnection?) value;
 		}
 
 		protected override DbParameterCollection DbParameterCollection => Parameters;
 
-		protected override DbTransaction DbTransaction
+		protected override DbTransaction? DbTransaction
 		{
 			get => Transaction;
-			set => Transaction = (MySqlTransaction) value;
+			set => Transaction = (MySqlTransaction?) value;
 		}
 
 		protected override DbParameter CreateDbParameter()
@@ -283,14 +283,14 @@ namespace MySql.Data.MySqlClient
 			return reader.RecordsAffected;
 		}
 
-		public override Task<object> ExecuteScalarAsync(CancellationToken cancellationToken) =>
+		public override Task<object?> ExecuteScalarAsync(CancellationToken cancellationToken) =>
 			ExecuteScalarAsync(AsyncIOBehavior, cancellationToken);
 
-		internal async Task<object> ExecuteScalarAsync(IOBehavior ioBehavior, CancellationToken cancellationToken)
+		internal async Task<object?> ExecuteScalarAsync(IOBehavior ioBehavior, CancellationToken cancellationToken)
 		{
 			ResetCommandTimeout();
 			var hasSetResult = false;
-			object result = null;
+			object? result = null;
 			using var reader = (MySqlDataReader) await ExecuteReaderAsync(CommandBehavior.SingleResult | CommandBehavior.SingleRow, ioBehavior, cancellationToken).ConfigureAwait(false);
 			do
 			{
@@ -314,7 +314,7 @@ namespace MySql.Data.MySqlClient
 		internal Task<DbDataReader> ExecuteReaderAsync(CommandBehavior behavior, IOBehavior ioBehavior, CancellationToken cancellationToken)
 		{
 			if (!IsValid(out var exception))
-				return Utility.TaskFromException<DbDataReader>(exception);
+				return Utility.TaskFromException<DbDataReader>(exception!);
 
 			var preparedStatements = TryGetPreparedStatement();
 			if (preparedStatements != null)
@@ -324,7 +324,7 @@ namespace MySql.Data.MySqlClient
 			else if (m_commandType == CommandType.StoredProcedure)
 				m_commandExecutor = new StoredProcedureCommandExecutor(this);
 
-			return m_commandExecutor.ExecuteReaderAsync(CommandText, m_parameterCollection, behavior, ioBehavior, cancellationToken);
+			return m_commandExecutor!.ExecuteReaderAsync(CommandText!, m_parameterCollection, behavior, ioBehavior, cancellationToken);
 		}
 
 		public MySqlCommand Clone() => new MySqlCommand(this);
@@ -417,7 +417,7 @@ namespace MySql.Data.MySqlClient
 				throw new ObjectDisposedException(GetType().Name);
 		}
 
-		private bool IsValid(out Exception exception)
+		private bool IsValid(out Exception? exception)
 		{
 			exception = null;
 			if (m_isDisposed)
@@ -433,19 +433,19 @@ namespace MySql.Data.MySqlClient
 			return exception == null;
 		}
 
-		private PreparedStatements TryGetPreparedStatement() => CommandType == CommandType.Text && !string.IsNullOrWhiteSpace(CommandText) ? m_connection.Session.TryGetPreparedStatement(CommandText) : null;
+		private PreparedStatements? TryGetPreparedStatement() => CommandType == CommandType.Text && !string.IsNullOrWhiteSpace(CommandText) ? m_connection.Session.TryGetPreparedStatement(CommandText) : null;
 
 		internal void ReaderClosed() => (m_commandExecutor as StoredProcedureCommandExecutor)?.SetParams();
 
 		static int s_commandId = 1;
 
 		bool m_isDisposed;
-		MySqlConnection m_connection;
-		string m_commandText;
-		MySqlParameterCollection m_parameterCollection;
+		MySqlConnection? m_connection;
+		string? m_commandText;
+		MySqlParameterCollection? m_parameterCollection;
 		int? m_commandTimeout;
 		CommandType m_commandType;
-		ICommandExecutor m_commandExecutor;
-		Action m_cancelAction;
+		ICommandExecutor? m_commandExecutor;
+		Action? m_cancelAction;
 	}
 }

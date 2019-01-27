@@ -204,7 +204,7 @@ namespace MySqlConnector.Protocol.Serialization
 		}
 
 #if !NET45 && !NETSTANDARD1_3
-		Encoder m_encoder;
+		Encoder? m_encoder;
 #endif
 		byte[] m_buffer;
 		Memory<byte> m_output;

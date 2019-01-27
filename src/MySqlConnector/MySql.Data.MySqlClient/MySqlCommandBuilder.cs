@@ -29,7 +29,7 @@ namespace MySql.Data.MySqlClient
 				throw new ArgumentException("MySqlCommand.CommandText must be set to a stored procedure name", nameof(command));
 			if (command.Connection?.State != ConnectionState.Open)
 				throw new ArgumentException("MySqlCommand.Connection must be an open connection.", nameof(command));
-			if (command.Connection.Session.ServerVersion.Version < ServerVersions.SupportsProcedureCache)
+			if (command.Connection!.Session.ServerVersion.Version < ServerVersions.SupportsProcedureCache)
 				throw new NotSupportedException("MySQL Server {0} doesn't support INFORMATION_SCHEMA".FormatInvariant(command.Connection.Session.ServerVersion.OriginalString));
 
 			var cachedProcedure = await command.Connection.GetCachedProcedure(ioBehavior, command.CommandText, cancellationToken).ConfigureAwait(false);

@@ -18,7 +18,7 @@ namespace MySqlConnector.Core
 			// generate an "xid" with "gtrid" (Global TRansaction ID) from the .NET Transaction and "bqual" (Branch QUALifier)
 			// unique to this object
 			var id = Interlocked.Increment(ref s_currentId);
-			m_xid = "'" + Transaction.TransactionInformation.LocalIdentifier + "', '" + id.ToString(CultureInfo.InvariantCulture) + "'";
+			m_xid = "'" + Transaction!.TransactionInformation.LocalIdentifier + "', '" + id.ToString(CultureInfo.InvariantCulture) + "'";
 
 			ExecuteXaCommand("START");
 
@@ -51,7 +51,7 @@ namespace MySqlConnector.Core
 
 		static int s_currentId;
 
-		string m_xid;
+		string? m_xid;
 	}
 }
 #endif

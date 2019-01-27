@@ -26,7 +26,7 @@ namespace MySqlConnector.Core
 		{
 			OnCommit(enlistment);
 			enlistment.Done();
-			Connection.UnenlistTransaction(this, Transaction);
+			Connection.UnenlistTransaction(this, Transaction!);
 			Transaction = null;
 		}
 
@@ -34,7 +34,7 @@ namespace MySqlConnector.Core
 		{
 			OnRollback(enlistment);
 			enlistment.Done();
-			Connection.UnenlistTransaction(this, Transaction);
+			Connection.UnenlistTransaction(this, Transaction!);
 			Transaction = null;
 		}
 
@@ -42,7 +42,7 @@ namespace MySqlConnector.Core
 
 		protected ImplicitTransactionBase(MySqlConnection connection) => Connection = connection;
 
-		protected Transaction Transaction { get; private set; }
+		protected Transaction? Transaction { get; private set; }
 
 		protected abstract void OnStart();
 		protected abstract void OnPrepare(PreparingEnlistment enlistment);

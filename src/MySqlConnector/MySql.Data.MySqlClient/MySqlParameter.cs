@@ -25,7 +25,7 @@ namespace MySql.Data.MySqlClient
 			ResetDbType();
 		}
 
-		public MySqlParameter(string name, object objValue)
+		public MySqlParameter(string name, object? objValue)
 			: this()
 		{
 			ParameterName = name;
@@ -54,7 +54,7 @@ namespace MySql.Data.MySqlClient
 		}
 
 #if !NETSTANDARD1_3
-		public MySqlParameter(string name, MySqlDbType mySqlDbType, int size, ParameterDirection direction, bool isNullable, byte precision, byte scale, string sourceColumn, DataRowVersion sourceVersion, object value)
+		public MySqlParameter(string name, MySqlDbType mySqlDbType, int size, ParameterDirection direction, bool isNullable, byte precision, byte scale, string sourceColumn, DataRowVersion sourceVersion, object? value)
 			: this(name, mySqlDbType, size, sourceColumn)
 		{
 			Direction = direction;
@@ -112,13 +112,13 @@ namespace MySql.Data.MySqlClient
 		public override byte Scale { get; set; }
 #endif
 
-		public override string ParameterName
+		public override string? ParameterName
 		{
 			get => m_name;
 			set
 			{
 				m_name = value;
-				NormalizedParameterName = value == null ? null : NormalizeParameterName(m_name);
+				NormalizedParameterName = value is null ? null : NormalizeParameterName(value);
 			}
 		}
 
@@ -132,7 +132,7 @@ namespace MySql.Data.MySqlClient
 		public override DataRowVersion SourceVersion { get; set; }
 #endif
 
-		public override object Value
+		public override object? Value
 		{
 			get => m_value;
 			set
@@ -195,7 +195,7 @@ namespace MySql.Data.MySqlClient
 
 		internal bool HasSetDbType { get; set; }
 
-		internal string NormalizedParameterName { get; private set; }
+		internal string? NormalizedParameterName { get; private set; }
 
 		internal void AppendSqlString(ByteBufferWriter writer, StatementPreparerOptions options)
 		{
@@ -638,8 +638,8 @@ namespace MySql.Data.MySqlClient
 
 		DbType m_dbType;
 		MySqlDbType m_mySqlDbType;
-		string m_name;
+		string? m_name;
 		ParameterDirection? m_direction;
-		object m_value;
+		object? m_value;
 	}
 }

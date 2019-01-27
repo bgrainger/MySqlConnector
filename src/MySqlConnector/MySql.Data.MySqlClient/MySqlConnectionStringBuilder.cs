@@ -12,13 +12,13 @@ namespace MySql.Data.MySqlClient
 		{
 		}
 
-		public MySqlConnectionStringBuilder(string connectionString)
+		public MySqlConnectionStringBuilder(string? connectionString)
 		{
 			ConnectionString = connectionString;
 		}
 
 		// Base Options
-		public string Server
+		public string? Server
 		{
 			get => MySqlConnectionStringOption.Server.GetValue(this);
 			set => MySqlConnectionStringOption.Server.SetValue(this, value);
@@ -30,19 +30,19 @@ namespace MySql.Data.MySqlClient
 			set => MySqlConnectionStringOption.Port.SetValue(this, value);
 		}
 
-		public string UserID
+		public string? UserID
 		{
 			get => MySqlConnectionStringOption.UserID.GetValue(this);
 			set => MySqlConnectionStringOption.UserID.SetValue(this, value);
 		}
 
-		public string Password
+		public string? Password
 		{
 			get => MySqlConnectionStringOption.Password.GetValue(this);
 			set => MySqlConnectionStringOption.Password.SetValue(this, value);
 		}
 
-		public string Database
+		public string? Database
 		{
 			get => MySqlConnectionStringOption.Database.GetValue(this);
 			set => MySqlConnectionStringOption.Database.SetValue(this, value);
@@ -60,7 +60,7 @@ namespace MySql.Data.MySqlClient
 			set => MySqlConnectionStringOption.ConnectionProtocol.SetValue(this, value);
 		}
 
-		public string PipeName
+		public string? PipeName
 		{
 			get => MySqlConnectionStringOption.PipeName.GetValue(this);
 			set => MySqlConnectionStringOption.PipeName.SetValue(this, value);
@@ -73,19 +73,19 @@ namespace MySql.Data.MySqlClient
 			set => MySqlConnectionStringOption.SslMode.SetValue(this, value);
 		}
 
-		public string CertificateFile
+		public string? CertificateFile
 		{
 			get => MySqlConnectionStringOption.CertificateFile.GetValue(this);
 			set => MySqlConnectionStringOption.CertificateFile.SetValue(this, value);
 		}
 
-		public string CertificatePassword
+		public string? CertificatePassword
 		{
 			get => MySqlConnectionStringOption.CertificatePassword.GetValue(this);
 			set => MySqlConnectionStringOption.CertificatePassword.SetValue(this, value);
 		}
 
-		public string CACertificateFile
+		public string? CACertificateFile
 		{
 			get => MySqlConnectionStringOption.CACertificateFile.GetValue(this);
 			set => MySqlConnectionStringOption.CACertificateFile.SetValue(this, value);
@@ -97,7 +97,7 @@ namespace MySql.Data.MySqlClient
 			set => MySqlConnectionStringOption.CertificateStoreLocation.SetValue(this, value);
 		}
 
-		public string CertificateThumbprint
+		public string? CertificateThumbprint
 		{
 			get => MySqlConnectionStringOption.CertificateThumbprint.GetValue(this);
 			set => MySqlConnectionStringOption.CertificateThumbprint.SetValue(this, value);
@@ -165,7 +165,7 @@ namespace MySql.Data.MySqlClient
 			set => MySqlConnectionStringOption.AllowZeroDateTime.SetValue(this, value);
 		}
 
-		public string ApplicationName
+		public string? ApplicationName
 		{
 			get => MySqlConnectionStringOption.ApplicationName.GetValue(this);
 			set => MySqlConnectionStringOption.ApplicationName.SetValue(this, value);
@@ -177,7 +177,7 @@ namespace MySql.Data.MySqlClient
 			set => MySqlConnectionStringOption.AutoEnlist.SetValue(this, value);
 		}
 
-		public string CharacterSet
+		public string? CharacterSet
 		{
 			get => MySqlConnectionStringOption.CharacterSet.GetValue(this);
 			set => MySqlConnectionStringOption.CharacterSet.SetValue(this, value);
@@ -255,13 +255,13 @@ namespace MySql.Data.MySqlClient
 			set => MySqlConnectionStringOption.PersistSecurityInfo.SetValue(this, value);
 		}
 
-		public string ServerRsaPublicKeyFile
+		public string? ServerRsaPublicKeyFile
 		{
 			get => MySqlConnectionStringOption.ServerRsaPublicKeyFile.GetValue(this);
 			set => MySqlConnectionStringOption.ServerRsaPublicKeyFile.SetValue(this, value);
 		}
 
-		public string ServerSPN
+		public string? ServerSPN
 		{
 			get => MySqlConnectionStringOption.ServerSPN.GetValue(this);
 			set => MySqlConnectionStringOption.ServerSPN.SetValue(this, value);
@@ -304,7 +304,7 @@ namespace MySql.Data.MySqlClient
 			return option != null && base.Remove(option.Key);
 		}
 
-		public override object this[string key]
+		public override object? this[string key]
 		{
 			get => MySqlConnectionStringOption.GetOptionForKey(key).GetObject(this);
 			set => base[MySqlConnectionStringOption.GetOptionForKey(key).Key] = Convert.ToString(value, CultureInfo.InvariantCulture);
@@ -327,32 +327,32 @@ namespace MySql.Data.MySqlClient
 				m_cachedConnectionString = connectionString;
 			}
 
-			return m_cachedConnectionStringWithoutPassword;
+			return m_cachedConnectionStringWithoutPassword!;
 		}
 
-		string m_cachedConnectionString;
-		string m_cachedConnectionStringWithoutPassword;
+		string? m_cachedConnectionString;
+		string? m_cachedConnectionStringWithoutPassword;
 	}
 
 	internal abstract class MySqlConnectionStringOption
 	{
 		// Base Options
-		public static readonly MySqlConnectionStringOption<string> Server;
+		public static readonly MySqlConnectionStringNullableOption<string> Server;
 		public static readonly MySqlConnectionStringOption<uint> Port;
-		public static readonly MySqlConnectionStringOption<string> UserID;
-		public static readonly MySqlConnectionStringOption<string> Password;
-		public static readonly MySqlConnectionStringOption<string> Database;
+		public static readonly MySqlConnectionStringNullableOption<string> UserID;
+		public static readonly MySqlConnectionStringNullableOption<string> Password;
+		public static readonly MySqlConnectionStringNullableOption<string> Database;
 		public static readonly MySqlConnectionStringOption<MySqlLoadBalance> LoadBalance;
 		public static readonly MySqlConnectionStringOption<MySqlConnectionProtocol> ConnectionProtocol;
-		public static readonly MySqlConnectionStringOption<string> PipeName;
+		public static readonly MySqlConnectionStringNullableOption<string> PipeName;
 
 		// SSL/TLS Options
 		public static readonly MySqlConnectionStringOption<MySqlSslMode> SslMode;
-		public static readonly MySqlConnectionStringOption<string> CertificateFile;
-		public static readonly MySqlConnectionStringOption<string> CertificatePassword;
+		public static readonly MySqlConnectionStringNullableOption<string> CertificateFile;
+		public static readonly MySqlConnectionStringNullableOption<string> CertificatePassword;
 		public static readonly MySqlConnectionStringOption<MySqlCertificateStoreLocation> CertificateStoreLocation;
-		public static readonly MySqlConnectionStringOption<string> CertificateThumbprint;
-		public static readonly MySqlConnectionStringOption<string> CACertificateFile;
+		public static readonly MySqlConnectionStringNullableOption<string> CertificateThumbprint;
+		public static readonly MySqlConnectionStringNullableOption<string> CACertificateFile;
 
 		// Connection Pooling Options
 		public static readonly MySqlConnectionStringOption<bool> Pooling;
@@ -367,9 +367,9 @@ namespace MySql.Data.MySqlClient
 		public static readonly MySqlConnectionStringOption<bool> AllowPublicKeyRetrieval;
 		public static readonly MySqlConnectionStringOption<bool> AllowUserVariables;
 		public static readonly MySqlConnectionStringOption<bool> AllowZeroDateTime;
-		public static readonly MySqlConnectionStringOption<string> ApplicationName;
+		public static readonly MySqlConnectionStringNullableOption<string> ApplicationName;
 		public static readonly MySqlConnectionStringOption<bool> AutoEnlist;
-		public static readonly MySqlConnectionStringOption<string> CharacterSet;
+		public static readonly MySqlConnectionStringNullableOption<string> CharacterSet;
 		public static readonly MySqlConnectionStringOption<uint> ConnectionTimeout;
 		public static readonly MySqlConnectionStringOption<bool> ConvertZeroDateTime;
 		public static readonly MySqlConnectionStringOption<MySqlDateTimeKind> DateTimeKind;
@@ -382,14 +382,14 @@ namespace MySql.Data.MySqlClient
 		public static readonly MySqlConnectionStringOption<uint> Keepalive;
 		public static readonly MySqlConnectionStringOption<bool> OldGuids;
 		public static readonly MySqlConnectionStringOption<bool> PersistSecurityInfo;
-		public static readonly MySqlConnectionStringOption<string> ServerRsaPublicKeyFile;
-		public static readonly MySqlConnectionStringOption<string> ServerSPN;
+		public static readonly MySqlConnectionStringNullableOption<string> ServerRsaPublicKeyFile;
+		public static readonly MySqlConnectionStringNullableOption<string> ServerSPN;
 		public static readonly MySqlConnectionStringOption<bool> TreatTinyAsBoolean;
 		public static readonly MySqlConnectionStringOption<bool> UseAffectedRows;
 		public static readonly MySqlConnectionStringOption<bool> UseCompression;
 		public static readonly MySqlConnectionStringOption<bool> UseXaTransactions;
 
-		public static MySqlConnectionStringOption TryGetOptionForKey(string key) =>
+		public static MySqlConnectionStringOption? TryGetOptionForKey(string key) =>
 			s_options.TryGetValue(key, out var option) ? option : null;
 
 		public static MySqlConnectionStringOption GetOptionForKey(string key) =>
@@ -398,7 +398,7 @@ namespace MySql.Data.MySqlClient
 		public string Key => m_keys[0];
 		public IReadOnlyList<string> Keys => m_keys;
 
-		public abstract object GetObject(MySqlConnectionStringBuilder builder);
+		public abstract object? GetObject(MySqlConnectionStringBuilder builder);
 
 		protected MySqlConnectionStringOption(IReadOnlyList<string> keys)
 		{
@@ -416,7 +416,7 @@ namespace MySql.Data.MySqlClient
 			s_options = new Dictionary<string, MySqlConnectionStringOption>(StringComparer.OrdinalIgnoreCase);
 
 			// Base Options
-			AddOption(Server = new MySqlConnectionStringOption<string>(
+			AddOption(Server = new MySqlConnectionStringNullableOption<string>(
 				keys: new[] { "Server", "Host", "Data Source", "DataSource", "Address", "Addr", "Network Address" },
 				defaultValue: ""));
 
@@ -424,15 +424,15 @@ namespace MySql.Data.MySqlClient
 				keys: new[] { "Port" },
 				defaultValue: 3306u));
 
-			AddOption(UserID = new MySqlConnectionStringOption<string>(
+			AddOption(UserID = new MySqlConnectionStringNullableOption<string>(
 				keys: new[] { "User Id", "UserID", "Username", "Uid", "User name", "User" },
 				defaultValue: ""));
 
-			AddOption(Password = new MySqlConnectionStringOption<string>(
+			AddOption(Password = new MySqlConnectionStringNullableOption<string>(
 				keys: new[] { "Password", "pwd" },
 				defaultValue: ""));
 
-			AddOption(Database = new MySqlConnectionStringOption<string>(
+			AddOption(Database = new MySqlConnectionStringNullableOption<string>(
 				keys: new[] { "Database", "Initial Catalog" },
 				defaultValue: ""));
 
@@ -444,7 +444,7 @@ namespace MySql.Data.MySqlClient
 				keys: new[] { "ConnectionProtocol", "Connection Protocol", "Protocol" },
 				defaultValue: MySqlConnectionProtocol.Socket));
 
-			AddOption(PipeName = new MySqlConnectionStringOption<string>(
+			AddOption(PipeName = new MySqlConnectionStringNullableOption<string>(
 				keys: new[] { "PipeName", "Pipe", "Pipe Name" },
 				defaultValue: "MYSQL"));
 
@@ -453,15 +453,15 @@ namespace MySql.Data.MySqlClient
 				keys: new[] { "SSL Mode", "SslMode" },
 				defaultValue: MySqlSslMode.Preferred));
 
-			AddOption(CertificateFile = new MySqlConnectionStringOption<string>(
+			AddOption(CertificateFile = new MySqlConnectionStringNullableOption<string>(
 				keys: new[] { "CertificateFile", "Certificate File" },
 				defaultValue: null));
 
-			AddOption(CertificatePassword = new MySqlConnectionStringOption<string>(
+			AddOption(CertificatePassword = new MySqlConnectionStringNullableOption<string>(
 				keys: new[] { "CertificatePassword", "Certificate Password" },
 				defaultValue: null));
 
-			AddOption(CACertificateFile = new MySqlConnectionStringOption<string>(
+			AddOption(CACertificateFile = new MySqlConnectionStringNullableOption<string>(
 				keys: new[] { "CACertificateFile", "CA Certificate File" },
 				defaultValue: null));
 
@@ -469,7 +469,7 @@ namespace MySql.Data.MySqlClient
 				keys: new[] { "CertificateStoreLocation", "Certificate Store Location" },
 				defaultValue: MySqlCertificateStoreLocation.None));
 
-			AddOption(CertificateThumbprint = new MySqlConnectionStringOption<string>(
+			AddOption(CertificateThumbprint = new MySqlConnectionStringNullableOption<string>(
 				keys: new[] { "CertificateThumbprint", "Certificate Thumbprint", "Certificate Thumb Print" },
 				defaultValue: null));
 
@@ -515,7 +515,7 @@ namespace MySql.Data.MySqlClient
 				keys: new[] { "AllowZeroDateTime", "Allow Zero DateTime" },
 				defaultValue: false));
 
-			AddOption(ApplicationName = new MySqlConnectionStringOption<string>(
+			AddOption(ApplicationName = new MySqlConnectionStringNullableOption<string>(
 				keys: new[] { "ApplicationName", "Application Name" },
 				defaultValue: null));
 
@@ -523,7 +523,7 @@ namespace MySql.Data.MySqlClient
 				keys: new[] { "AutoEnlist", "Auto Enlist" },
 				defaultValue: true));
 
-			AddOption(CharacterSet = new MySqlConnectionStringOption<string>(
+			AddOption(CharacterSet = new MySqlConnectionStringNullableOption<string>(
 				keys: new[] { "CharSet", "Character Set", "CharacterSet" },
 				defaultValue: ""));
 
@@ -575,11 +575,11 @@ namespace MySql.Data.MySqlClient
 				keys: new[] { "Persist Security Info", "PersistSecurityInfo" },
 				defaultValue: false));
 
-			AddOption(ServerRsaPublicKeyFile = new MySqlConnectionStringOption<string>(
+			AddOption(ServerRsaPublicKeyFile = new MySqlConnectionStringNullableOption<string>(
 				keys: new[] { "ServerRSAPublicKeyFile", "Server RSA Public Key File" },
 				defaultValue: null));
 
-			AddOption(ServerSPN = new MySqlConnectionStringOption<string>(
+			AddOption(ServerSPN = new MySqlConnectionStringNullableOption<string>(
 				keys: new[] { "Server SPN", "ServerSPN" },
 				defaultValue: null));
 
@@ -606,8 +606,9 @@ namespace MySql.Data.MySqlClient
 	}
 
 	internal sealed class MySqlConnectionStringOption<T> : MySqlConnectionStringOption
+		where T : struct
 	{
-		public MySqlConnectionStringOption(IReadOnlyList<string> keys, T defaultValue, Func<T, T> coerce = null)
+		public MySqlConnectionStringOption(IReadOnlyList<string> keys, T defaultValue, Func<T, T>? coerce = null)
 			: base(keys)
 		{
 			m_defaultValue = defaultValue;
@@ -622,7 +623,7 @@ namespace MySql.Data.MySqlClient
 			builder[Key] = m_coerce != null ? m_coerce(value) : value;
 		}
 
-		public override object GetObject(MySqlConnectionStringBuilder builder)
+		public override object? GetObject(MySqlConnectionStringBuilder builder)
 		{
 			return GetValue(builder);
 		}
@@ -653,6 +654,23 @@ namespace MySql.Data.MySqlClient
 		}
 
 		readonly T m_defaultValue;
-		readonly Func<T, T> m_coerce;
+		readonly Func<T, T>? m_coerce;
+	}
+
+	internal sealed class MySqlConnectionStringNullableOption<T> : MySqlConnectionStringOption
+		where T : class
+	{
+		public MySqlConnectionStringNullableOption(IReadOnlyList<string> keys, T? defaultValue)
+			: base(keys)
+		{
+			m_defaultValue = defaultValue;
+		}
+
+		public T? GetValue(MySqlConnectionStringBuilder builder) => builder.TryGetValue(Key, out var objectValue) ? ChangeType(objectValue) : m_defaultValue;
+		public void SetValue(MySqlConnectionStringBuilder builder, T? value) => builder[Key] = value;
+		public override object? GetObject(MySqlConnectionStringBuilder builder) => GetValue(builder);
+		private static T? ChangeType(object objectValue) => (T?) Convert.ChangeType(objectValue, typeof(T), CultureInfo.InvariantCulture);
+
+		readonly T? m_defaultValue;
 	}
 }

@@ -34,7 +34,7 @@ namespace MySqlConnector.Core
 		{
 		}
 
-		public ServerSession(ConnectionPool pool, int poolGeneration, int id)
+		public ServerSession(ConnectionPool? pool, int poolGeneration, int id)
 		{
 			m_lock = new object();
 			m_payloadCache = new ArraySegmentHolder<byte>();
@@ -43,7 +43,9 @@ namespace MySqlConnector.Core
 			Pool = pool;
 			PoolGeneration = poolGeneration;
 			HostName = "";
-			m_logArguments = new object[] { "{0}".FormatInvariant(Id), null };
+			ServerVersion = ServerVersion.Zero;
+			AuthPluginData = Array.Empty<byte>();
+			m_logArguments = new object?[] { "{0}".FormatInvariant(Id), null };
 			Log.Debug("Session{0} created new session", m_logArguments);
 		}
 
@@ -52,13 +54,13 @@ namespace MySqlConnector.Core
 		public int ConnectionId { get; set; }
 		public byte[] AuthPluginData { get; set; }
 		public uint CreatedTicks { get; }
-		public ConnectionPool Pool { get; }
+		public ConnectionPool? Pool { get; }
 		public int PoolGeneration { get; }
 		public uint LastReturnedTicks { get; private set; }
-		public string DatabaseOverride { get; set; }
+		public string? DatabaseOverride { get; set; }
 		public string HostName { get; private set; }
-		public IPAddress IPAddress => (m_tcpClient?.Client.RemoteEndPoint as IPEndPoint)?.Address;
-		public WeakReference<MySqlConnection> OwningConnection { get; set; }
+		public IPAddress? IPAddress => (m_tcpClient?.Client.RemoteEndPoint as IPEndPoint)?.Address;
+		public WeakReference<MySqlConnection>? OwningConnection { get; set; }
 		public bool SupportsDeprecateEof => m_supportsDeprecateEof;
 		public bool SupportsSessionTrack => m_supportsSessionTrack;
 		public bool ProcAccessDenied { get; set; }
@@ -136,7 +138,7 @@ namespace MySqlConnector.Core
 			m_preparedStatements.Add(commandText, preparedStatements);
 		}
 
-		public PreparedStatements TryGetPreparedStatement(string commandText)
+		public PreparedStatements? TryGetPreparedStatement(string commandText)
 		{
 			if (m_preparedStatements != null)
 			{
@@ -200,7 +202,7 @@ namespace MySqlConnector.Core
 			}
 		}
 
-		public void SetTimeout(int timeoutMilliseconds) => m_payloadHandler.ByteHandler.RemainingTimeout = timeoutMilliseconds;
+		public void SetTimeout(int timeoutMilliseconds) => m_payloadHandler!.ByteHandler.RemainingTimeout = timeoutMilliseconds;
 
 		public async Task DisposeAsync(IOBehavior ioBehavior, CancellationToken cancellationToken)
 		{
@@ -245,7 +247,7 @@ namespace MySqlConnector.Core
 				m_state = State.Closed;
 		}
 
-		public async Task ConnectAsync(ConnectionSettings cs, ILoadBalancer loadBalancer, IOBehavior ioBehavior, CancellationToken cancellationToken)
+		public async Task ConnectAsync(ConnectionSettings cs, ILoadBalancer? loadBalancer, IOBehavior ioBehavior, CancellationToken cancellationToken)
 		{
 			try
 			{
@@ -271,7 +273,7 @@ namespace MySqlConnector.Core
 
 					var connected = false;
 					if (cs.ConnectionProtocol == MySqlConnectionProtocol.Sockets)
-						connected = await OpenTcpSocketAsync(cs, loadBalancer, ioBehavior, cancellationToken).ConfigureAwait(false);
+						connected = await OpenTcpSocketAsync(cs, loadBalancer!, ioBehavior, cancellationToken).ConfigureAwait(false);
 					else if (cs.ConnectionProtocol == MySqlConnectionProtocol.UnixSocket)
 						connected = await OpenUnixSocketAsync(cs, ioBehavior, cancellationToken).ConfigureAwait(false);
 					else if (cs.ConnectionProtocol == MySqlConnectionProtocol.NamedPipe)
@@ -284,14 +286,14 @@ namespace MySqlConnector.Core
 						throw new MySqlException((int) MySqlErrorCode.UnableToConnectToHost, null, "Unable to connect to any of the specified MySQL hosts.");
 					}
 
-					var byteHandler = m_socket != null ? (IByteHandler) new SocketByteHandler(m_socket) : new StreamByteHandler(m_stream);
+					var byteHandler = m_socket != null ? (IByteHandler) new SocketByteHandler(m_socket) : new StreamByteHandler(m_stream!);
 					m_payloadHandler = new StandardPayloadHandler(byteHandler);
 
 					payload = await ReceiveAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 					initialHandshake = InitialHandshakePayload.Create(payload.AsSpan());
 
 					// if PluginAuth is supported, then use the specified auth plugin; else, fall back to protocol capabilities to determine the auth type to use
-					string authPluginName;
+					string? authPluginName;
 					if ((initialHandshake.ProtocolCapabilities & ProtocolCapabilities.PluginAuth) != 0)
 						authPluginName = initialHandshake.AuthPluginName;
 					else
@@ -631,14 +633,14 @@ namespace MySqlConnector.Core
 		// Starts a new conversation with the server by sending the first packet.
 		public ValueTask<int> SendAsync(PayloadData payload, IOBehavior ioBehavior, CancellationToken cancellationToken)
 		{
-			m_payloadHandler.StartNewConversation();
+			m_payloadHandler!.StartNewConversation();
 			return SendReplyAsync(payload, ioBehavior, cancellationToken);
 		}
 
 		// Starts a new conversation with the server by receiving the first packet.
 		public ValueTask<PayloadData> ReceiveAsync(IOBehavior ioBehavior, CancellationToken cancellationToken)
 		{
-			m_payloadHandler.StartNewConversation();
+			m_payloadHandler!.StartNewConversation();
 			return ReceiveReplyAsync(ioBehavior, cancellationToken);
 		}
 
@@ -649,7 +651,7 @@ namespace MySqlConnector.Core
 			try
 			{
 				VerifyConnected();
-				task = m_payloadHandler.ReadPayloadAsync(m_payloadCache, ProtocolErrorBehavior.Throw, ioBehavior);
+				task = m_payloadHandler!.ReadPayloadAsync(m_payloadCache, ProtocolErrorBehavior.Throw, ioBehavior);
 			}
 			catch (Exception ex)
 			{
@@ -679,7 +681,7 @@ namespace MySqlConnector.Core
 			try
 			{
 				VerifyConnected();
-				task = m_payloadHandler.WritePayloadAsync(payload.ArraySegment, ioBehavior);
+				task = m_payloadHandler!.WritePayloadAsync(payload.ArraySegment, ioBehavior);
 			}
 			catch (Exception ex)
 			{
@@ -742,7 +744,7 @@ namespace MySqlConnector.Core
 				foreach (var ipAddress in ipAddresses)
 				{
 					Log.Info("Session{0} connecting to IpAddress {1} for HostName '{2}'", m_logArguments[0], ipAddress, hostName);
-					TcpClient tcpClient = null;
+					TcpClient? tcpClient = null;
 					try
 					{
 						tcpClient = new TcpClient(ipAddress.AddressFamily);
@@ -908,7 +910,7 @@ namespace MySqlConnector.Core
 		private async Task InitSslAsync(ProtocolCapabilities serverCapabilities, ConnectionSettings cs, SslProtocols sslProtocols, IOBehavior ioBehavior, CancellationToken cancellationToken)
 		{
 			Log.Info("Session{0} initializing TLS connection", m_logArguments);
-			X509CertificateCollection clientCertificates = null;
+			X509CertificateCollection? clientCertificates = null;
 
 			if (cs.CertificateStoreLocation != MySqlCertificateStoreLocation.None)
 			{
@@ -975,10 +977,10 @@ namespace MySqlConnector.Core
 				}
 			}
 
-			X509Chain caCertificateChain = null;
+			X509Chain? caCertificateChain = null;
 			if (cs.CACertificateFile != null)
 			{
-				var certificateChain = new X509Chain
+				X509Chain? certificateChain = new X509Chain
 				{
 					ChainPolicy =
 						{
@@ -1090,7 +1092,7 @@ namespace MySqlConnector.Core
 #endif
 				}
 				var sslByteHandler = new StreamByteHandler(sslStream);
-				m_payloadHandler.ByteHandler = sslByteHandler;
+				m_payloadHandler!.ByteHandler = sslByteHandler;
 				m_isSecureConnection = true;
 				m_sslStream = sslStream;
 				m_logArguments[1] = sslStream.SslProtocol;
@@ -1152,7 +1154,7 @@ namespace MySqlConnector.Core
 
 				// first (and only) row
 				payload = await ReceiveReplyAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
-				static void ReadRow(ReadOnlySpan<byte> span, out int? connectionId_, out string serverVersion_)
+				static void ReadRow(ReadOnlySpan<byte> span, out int? connectionId_, out string? serverVersion_)
 				{
 					var reader = new ByteArrayReader(span);
 					var length = reader.ReadLengthEncodedIntegerOrNull();
@@ -1203,7 +1205,7 @@ namespace MySqlConnector.Core
 		/// </summary>
 		/// <typeparam name="T">An <see cref="IDisposable"/> type.</typeparam>
 		/// <param name="disposable">The object to dispose.</param>
-		private static void SafeDispose<T>(ref T disposable)
+		private static void SafeDispose<T>(ref T? disposable)
 			where T : class, IDisposable
 		{
 			if (disposable != null)
@@ -1394,15 +1396,15 @@ namespace MySqlConnector.Core
 		static readonly PayloadData s_setNamesUtf8mb4Payload = QueryPayload.Create("SET NAMES utf8mb4 COLLATE utf8mb4_general_ci;");
 
 		readonly object m_lock;
-		readonly object[] m_logArguments;
+		readonly object?[] m_logArguments;
 		readonly ArraySegmentHolder<byte> m_payloadCache;
 		State m_state;
-		TcpClient m_tcpClient;
-		Socket m_socket;
-		Stream m_stream;
-		SslStream m_sslStream;
-		X509Certificate2 m_clientCertificate;
-		IPayloadHandler m_payloadHandler;
+		TcpClient? m_tcpClient;
+		Socket? m_socket;
+		Stream? m_stream;
+		SslStream? m_sslStream;
+		X509Certificate2? m_clientCertificate;
+		IPayloadHandler? m_payloadHandler;
 		int m_activeCommandId;
 		bool m_useCompression;
 		bool m_isSecureConnection;
@@ -1410,6 +1412,6 @@ namespace MySqlConnector.Core
 		bool m_supportsDeprecateEof;
 		bool m_supportsSessionTrack;
 		CharacterSet m_characterSet;
-		Dictionary<string, PreparedStatements> m_preparedStatements;
+		Dictionary<string, PreparedStatements>? m_preparedStatements;
 	}
 }

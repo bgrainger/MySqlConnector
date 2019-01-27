@@ -63,8 +63,8 @@ namespace MySql.Data.MySqlClient
 			}
 		}
 
-		public new MySqlConnection Connection { get; private set; }
-		protected override DbConnection DbConnection => Connection;
+		public new MySqlConnection? Connection { get; private set; }
+		protected override DbConnection? DbConnection => Connection;
 		public override IsolationLevel IsolationLevel { get; }
 
 		protected override void Dispose(bool disposing)
@@ -76,7 +76,7 @@ namespace MySql.Data.MySqlClient
 					m_isDisposed = true;
 					if (Connection?.CurrentTransaction == this)
 					{
-						if (Connection.Session.IsConnected)
+						if (Connection!.Session.IsConnected)
 						{
 							using var cmd = new MySqlCommand("rollback", Connection, this);
 							cmd.ExecuteNonQuery();

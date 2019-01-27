@@ -20,7 +20,7 @@ namespace MySqlConnector.Core
 			m_command = command;
 		}
 
-		public virtual async Task<DbDataReader> ExecuteReaderAsync(string commandText, MySqlParameterCollection parameterCollection,
+		public virtual async Task<DbDataReader> ExecuteReaderAsync(string commandText, MySqlParameterCollection? parameterCollection,
 			CommandBehavior behavior, IOBehavior ioBehavior, CancellationToken cancellationToken)
 		{
 			cancellationToken.ThrowIfCancellationRequested();
@@ -49,7 +49,7 @@ namespace MySqlConnector.Core
 			}
 		}
 
-		private PayloadData CreateQueryPayload(string commandText, MySqlParameterCollection parameterCollection)
+		private PayloadData CreateQueryPayload(string commandText, MySqlParameterCollection? parameterCollection)
 		{
 			var preparer = new StatementPreparer(commandText, parameterCollection, m_command.CreateStatementPreparerOptions());
 			return new PayloadData(preparer.ParseAndBindParameters(), isPooled: true);

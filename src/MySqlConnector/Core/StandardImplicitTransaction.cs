@@ -12,7 +12,7 @@ namespace MySqlConnector.Core
 
 		protected override void OnStart()
 		{
-			System.Data.IsolationLevel isolationLevel = Transaction.IsolationLevel switch
+			System.Data.IsolationLevel isolationLevel = Transaction!.IsolationLevel switch
 			{
 				IsolationLevel.Serializable => System.Data.IsolationLevel.Serializable,
 				IsolationLevel.RepeatableRead => System.Data.IsolationLevel.RepeatableRead,
@@ -32,17 +32,17 @@ namespace MySqlConnector.Core
 
 		protected override void OnCommit(Enlistment enlistment)
 		{
-			m_transaction.Commit();
+			m_transaction!.Commit();
 			m_transaction = null;
 		}
 
 		protected override void OnRollback(Enlistment enlistment)
 		{
-			m_transaction.Rollback();
+			m_transaction!.Rollback();
 			m_transaction = null;
 		}
 
-		MySqlTransaction m_transaction;
+		MySqlTransaction? m_transaction;
 	}
 }
 #endif

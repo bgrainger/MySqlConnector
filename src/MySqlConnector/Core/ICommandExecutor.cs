@@ -9,6 +9,6 @@ namespace MySqlConnector.Core
 {
 	internal interface ICommandExecutor
 	{
-		Task<DbDataReader> ExecuteReaderAsync(string commandText, MySqlParameterCollection parameterCollection, CommandBehavior behavior, IOBehavior ioBehavior, CancellationToken cancellationToken);
+		Task<DbDataReader> ExecuteReaderAsync(string commandText, MySqlParameterCollection? parameterCollection, CommandBehavior behavior, IOBehavior ioBehavior, CancellationToken cancellationToken);
 	}
 }
