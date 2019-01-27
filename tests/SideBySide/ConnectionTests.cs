@@ -59,71 +59,59 @@ namespace SideBySide
 		[Fact]
 		public void DefaultConnectionStringIsEmpty()
 		{
-			using (var connection = new MySqlConnection())
-				Assert.Equal("", connection.ConnectionString);
+			using var connection = new MySqlConnection();
+			Assert.Equal("", connection.ConnectionString);
 		}
 
 		[Fact]
 		public void InitializeWithNullConnectionString()
 		{
-			using (var connection = new MySqlConnection(default(string)))
-				Assert.Equal("", connection.ConnectionString);
+			using var connection = new MySqlConnection(default(string));
+			Assert.Equal("", connection.ConnectionString);
 		}
 
 		[Fact]
 		public void SetConnectionStringToNull()
 		{
-			using (var connection = new MySqlConnection())
-			{
-				connection.ConnectionString = null;
-				Assert.Equal("", connection.ConnectionString);
-			}
+			using var connection = new MySqlConnection();
+			connection.ConnectionString = null;
+			Assert.Equal("", connection.ConnectionString);
 		}
 
 		[Fact]
 		public void SetConnectionStringToEmptyString()
 		{
-			using (var connection = new MySqlConnection())
-			{
-				connection.ConnectionString = "";
-				Assert.Equal("", connection.ConnectionString);
-			}
+			using var connection = new MySqlConnection();
+			connection.ConnectionString = "";
+			Assert.Equal("", connection.ConnectionString);
 		}
 
 		[SkippableFact(Baseline = "Throws NullReferenceException")]
 		public void ServerVersionThrows()
 		{
-			using (var connection = new MySqlConnection())
-			{
-				Assert.Throws<InvalidOperationException>(() => connection.ServerVersion);
-			}
+			using var connection = new MySqlConnection();
+			Assert.Throws<InvalidOperationException>(() => connection.ServerVersion);
 		}
 
 		[SkippableFact(Baseline = "Throws NullReferenceException")]
 		public void ServerThreadThrows()
 		{
-			using (var connection = new MySqlConnection())
-			{
-				Assert.Throws<InvalidOperationException>(() => connection.ServerThread);
-			}
+			using var connection = new MySqlConnection();
+			Assert.Throws<InvalidOperationException>(() => connection.ServerThread);
 		}
 
 		[Fact]
 		public void DatabaseIsEmptyString()
 		{
-			using (var connection = new MySqlConnection())
-			{
-				Assert.Equal("", connection.Database);
-			}
+			using var connection = new MySqlConnection();
+			Assert.Equal("", connection.Database);
 		}
 
 		[Fact]
 		public void DataSourceIsEmptyString()
 		{
-			using (var connection = new MySqlConnection())
-			{
-				Assert.Equal("", connection.DataSource);
-			}
+			using var connection = new MySqlConnection();
+			Assert.Equal("", connection.DataSource);
 		}
 	}
 }

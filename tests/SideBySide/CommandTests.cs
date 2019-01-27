@@ -249,8 +249,8 @@ create table execute_non_query(id integer not null primary key auto_increment, v
 		[SkippableFact(Baseline = "https://bugs.mysql.com/bug.php?id=94075")]
 		public void CancelEmptyCommandIsNoop()
 		{
-			using (var cmd = new MySqlCommand())
-				cmd.Cancel();
+			using var cmd = new MySqlCommand();
+			cmd.Cancel();
 		}
 
 		private static string GetIgnoreCommandTransactionConnectionString()

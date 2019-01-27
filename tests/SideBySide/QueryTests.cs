@@ -128,73 +128,57 @@ insert into query_test (value) VALUES (1);
 		[Fact]
 		public void ReadAfterDispose()
 		{
-			using (var cmd = m_database.Connection.CreateCommand())
-			{
-				cmd.CommandText = "SELECT 1;";
-				using (var reader = cmd.ExecuteReader())
-				{
-					reader.Dispose();
+			using var cmd = m_database.Connection.CreateCommand();
+			cmd.CommandText = "SELECT 1;";
+			using var reader = cmd.ExecuteReader();
+			reader.Dispose();
 #if BASELINE
-					Assert.Throws<MySqlException>(() => reader.Read());
+			Assert.Throws<MySqlException>(() => reader.Read());
 #else
-					Assert.Throws<InvalidOperationException>(() => reader.Read());
+			Assert.Throws<InvalidOperationException>(() => reader.Read());
 #endif
-				}
-			}
 		}
 
 		[Fact]
 		public async Task ReadAsyncAfterDispose()
 		{
-			using (var cmd = m_database.Connection.CreateCommand())
-			{
-				cmd.CommandText = "SELECT 1;";
-				using (var reader = cmd.ExecuteReader())
-				{
-					reader.Dispose();
+			using var cmd = m_database.Connection.CreateCommand();
+			cmd.CommandText = "SELECT 1;";
+			using var reader = cmd.ExecuteReader();
+			reader.Dispose();
 #if BASELINE
-					await Assert.ThrowsAsync<MySqlException>(() => reader.ReadAsync());
+			await Assert.ThrowsAsync<MySqlException>(() => reader.ReadAsync());
 #else
-					await Assert.ThrowsAsync<InvalidOperationException>(() => reader.ReadAsync());
+			await Assert.ThrowsAsync<InvalidOperationException>(() => reader.ReadAsync());
 #endif
-				}
-			}
 		}
 
 		[Fact]
 		public void NextResultAfterDispose()
 		{
-			using (var cmd = m_database.Connection.CreateCommand())
-			{
-				cmd.CommandText = "SELECT 1;";
-				using (var reader = cmd.ExecuteReader())
-				{
-					reader.Dispose();
+			using var cmd = m_database.Connection.CreateCommand();
+			cmd.CommandText = "SELECT 1;";
+			using var reader = cmd.ExecuteReader();
+			reader.Dispose();
 #if BASELINE
-					Assert.Throws<MySqlException>(() => reader.NextResult());
+			Assert.Throws<MySqlException>(() => reader.NextResult());
 #else
-					Assert.Throws<InvalidOperationException>(() => reader.NextResult());
+			Assert.Throws<InvalidOperationException>(() => reader.NextResult());
 #endif
-				}
-			}
 		}
 
 		[Fact]
 		public async Task NextResultAsyncAfterDispose()
 		{
-			using (var cmd = m_database.Connection.CreateCommand())
-			{
-				cmd.CommandText = "SELECT 1;";
-				using (var reader = cmd.ExecuteReader())
-				{
-					reader.Dispose();
+			using var cmd = m_database.Connection.CreateCommand();
+			cmd.CommandText = "SELECT 1;";
+			using var reader = cmd.ExecuteReader();
+			reader.Dispose();
 #if BASELINE
-					await Assert.ThrowsAsync<MySqlException>(() => reader.NextResultAsync());
+			await Assert.ThrowsAsync<MySqlException>(() => reader.NextResultAsync());
 #else
-					await Assert.ThrowsAsync<InvalidOperationException>(() => reader.NextResultAsync());
+			await Assert.ThrowsAsync<InvalidOperationException>(() => reader.NextResultAsync());
 #endif
-				}
-			}
 		}
 
 		[Fact]
