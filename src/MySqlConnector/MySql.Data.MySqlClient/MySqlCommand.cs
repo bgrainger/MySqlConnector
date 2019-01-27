@@ -76,7 +76,7 @@ namespace MySql.Data.MySqlClient
 
 		public override int ExecuteNonQuery() => ExecuteNonQueryAsync(IOBehavior.Synchronous, CancellationToken.None).GetAwaiter().GetResult();
 
-		public override object ExecuteScalar() => ExecuteScalarAsync(IOBehavior.Synchronous, CancellationToken.None).GetAwaiter().GetResult();
+		public override object? ExecuteScalar() => ExecuteScalarAsync(IOBehavior.Synchronous, CancellationToken.None).GetAwaiter().GetResult();
 
 		public new MySqlDataReader ExecuteReader() => (MySqlDataReader) base.ExecuteReader();
 
@@ -354,7 +354,7 @@ namespace MySql.Data.MySqlClient
 		/// <returns>An object that must be disposed to revoke the cancellation registration.</returns>
 		/// <remarks>This method is more efficient than calling <code>token.Register(Command.Cancel)</code> because it avoids
 		/// unnecessary allocations.</remarks>
-		internal IDisposable RegisterCancel(CancellationToken token)
+		internal IDisposable? RegisterCancel(CancellationToken token)
 		{
 			if (!token.CanBeCanceled)
 				return null;

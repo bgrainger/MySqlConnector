@@ -21,10 +21,10 @@ namespace MySql.Data.MySqlClient
 		{
 		}
 
-		public MySqlConnection(string connectionString)
+		public MySqlConnection(string? connectionString)
 		{
 			GC.SuppressFinalize(this);
-			ConnectionString = connectionString;
+			m_connectionString = connectionString ?? "";
 		}
 
 		public new MySqlTransaction BeginTransaction() => (MySqlTransaction) base.BeginTransaction();
@@ -376,7 +376,7 @@ namespace MySql.Data.MySqlClient
 			if (cachedProcedures == null)
 			{
 				Log.Warn("Session{0} pool Pool{1} doesn't have a shared procedure cache; procedure will only be cached on this connection", m_session.Id, m_session.Pool?.Id);
-				cachedProcedures = m_cachedProcedures = new Dictionary<string, CachedProcedure>();
+				cachedProcedures = m_cachedProcedures = new Dictionary<string, CachedProcedure?>();
 			}
 
 			var normalized = NormalizedSchema.MustNormalize(name, Database);
@@ -386,7 +386,7 @@ namespace MySql.Data.MySqlClient
 				return null;
 			}
 
-			CachedProcedure cachedProcedure;
+			CachedProcedure? cachedProcedure;
 			bool foundProcedure;
 			lock (cachedProcedures)
 				foundProcedure = cachedProcedures.TryGetValue(normalized.FullyQualified, out cachedProcedure);
@@ -625,7 +625,7 @@ namespace MySql.Data.MySqlClient
 		static readonly Dictionary<System.Transactions.Transaction, MySqlConnection> s_transactionConnections = new Dictionary<System.Transactions.Transaction, MySqlConnection>();
 #endif
 
-		string? m_connectionString;
+		string m_connectionString;
 		ConnectionSettings? m_connectionSettings;
 		ServerSession? m_session;
 		ConnectionState m_connectionState;

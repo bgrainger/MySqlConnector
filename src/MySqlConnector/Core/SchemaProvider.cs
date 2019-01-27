@@ -155,7 +155,7 @@ namespace MySqlConnector.Core
 				new DataColumn("DEFINER", typeof(string)),
 			});
 
-			Action close = null;
+			Action? close = null;
 			if (m_connection.State != ConnectionState.Open)
 			{
 				m_connection.Open();
