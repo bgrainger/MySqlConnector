@@ -1,0 +1,30 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0</TargetFrameworks>
+    <Title>NetTopologySuite spatial support plugin for MySqlConnector Entity Framework Core provider.</Title>
+    <Copyright>Copyright 2019 Bradley Grainger</Copyright>
+    <Authors>Bradley Grainger</Authors>
+    <PackageTags>mysqlconnector;entity-framework-core;EntityFrameworkCore;mysql;efcore;spatial;GIS;NTS</PackageTags>
+    <SignAssembly>false</SignAssembly>
+    <PublicSign>false</PublicSign>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MySqlConnector\MySqlConnector.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="build\**\*">
+      <Pack>True</Pack>
+      <PackagePath>build</PackagePath>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NetTopologySuite.Core" Version="1.15.3" />
+    <PackageReference Include="NetTopologySuite.IO.SpatiaLite" Version="1.15.1" />
+    <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="2.2.1-preview1-final" />
+  </ItemGroup>
+
+</Project>
