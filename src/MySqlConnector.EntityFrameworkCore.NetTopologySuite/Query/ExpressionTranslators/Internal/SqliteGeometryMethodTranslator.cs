@@ -33,7 +33,7 @@ namespace MySqlConnector.EntityFrameworkCore.MySql.Query.ExpressionTranslators.I
             { typeof(IGeometry).GetRuntimeMethod(nameof(IGeometry.Covers), new[] { typeof(IGeometry) }), "Covers" },
             { typeof(IGeometry).GetRuntimeMethod(nameof(IGeometry.Difference), new[] { typeof(IGeometry) }), "Difference" },
             { typeof(IGeometry).GetRuntimeMethod(nameof(IGeometry.Disjoint), new[] { typeof(IGeometry) }), "Disjoint" },
-            { typeof(IGeometry).GetRuntimeMethod(nameof(IGeometry.Distance), new[] { typeof(IGeometry) }), "Distance" },
+            { typeof(IGeometry).GetRuntimeMethod(nameof(IGeometry.Distance), new[] { typeof(IGeometry) }), "ST_Distance" },
             { typeof(IGeometry).GetRuntimeMethod(nameof(IGeometry.EqualsTopologically), new[] { typeof(IGeometry) }), "Equals" },
             { typeof(IGeometry).GetRuntimeMethod(nameof(IGeometry.Intersection), new[] { typeof(IGeometry) }), "Intersection" },
             { typeof(IGeometry).GetRuntimeMethod(nameof(IGeometry.Intersects), new[] { typeof(IGeometry) }), "Intersects" },
