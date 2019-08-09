@@ -1,4 +1,6 @@
-﻿using GeoAPI.Geometries;
+using System;
+using System.IO;
+using GeoAPI.Geometries;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NetTopologySuite.IO;
 
@@ -15,11 +17,21 @@ namespace MySqlConnector.EntityFrameworkCore.MySql.Storage.ValueConversion.Inter
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public GeometryValueConverter(GaiaGeoReader reader, GaiaGeoWriter writer)
+        public GeometryValueConverter(WKBReader reader, WKBWriter writer)
             : base(
-                g => writer.Write(g),
+                g => Write(writer, g),
                 b => (TGeometry)reader.Read(b))
         {
         }
+
+		private static byte[] Write(WKBWriter writer, TGeometry geometry)
+		{
+			using (var memoryStream = new MemoryStream())
+			{
+				memoryStream.Write(BitConverter.GetBytes(geometry.SRID), 0, 4);
+				writer.Write(geometry, memoryStream);
+				return memoryStream.ToArray();
+			}
+		}
     }
 }

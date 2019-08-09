@@ -1,9 +1,10 @@
-﻿using System;
+using System;
 using System.Data.Common;
 using System.Reflection;
 using System.Text;
 using GeoAPI;
 using GeoAPI.Geometries;
+using GeoAPI.IO;
 using MySqlConnector.EntityFrameworkCore.MySql.Storage.ValueConversion.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
@@ -104,12 +105,10 @@ namespace MySqlConnector.EntityFrameworkCore.MySql.Storage.Internal
 		protected override Type WKTReaderType
 			=> typeof(WKTReader);
 
-		private static GaiaGeoReader CreateReader(IGeometryServices geometryServices)
-			=> new GaiaGeoReader(
-				geometryServices.DefaultCoordinateSequenceFactory,
-				geometryServices.DefaultPrecisionModel);
+		private static WKBReader CreateReader(IGeometryServices geometryServices)
+			=> new WKBReader(geometryServices);
 
-		private static GaiaGeoWriter CreateWriter()
-			=> new GaiaGeoWriter();
+		private static WKBWriter CreateWriter()
+			=> new WKBWriter(ByteOrder.LittleEndian, false);
 	}
 }
