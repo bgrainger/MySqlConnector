@@ -18,10 +18,12 @@ using Xunit;
 using GetValueWhenNullException = System.Data.SqlTypes.SqlNullValueException;
 using GetGuidWhenNullException = MySql.Data.MySqlClient.MySqlException;
 using GetBytesWhenNullException = System.NullReferenceException;
+using GetGeometryWhenNullException = System.Exception;
 #else
 using GetValueWhenNullException = System.InvalidCastException;
 using GetGuidWhenNullException = System.InvalidCastException;
 using GetBytesWhenNullException = System.InvalidCastException;
+using GetGeometryWhenNullException = System.InvalidCastException;
 #endif
 
 namespace SideBySide
@@ -1009,14 +1011,16 @@ insert into date_time_kind(d, dt0, dt1, dt2, dt3, dt4, dt5, dt6) values(?, ?, ?,
 		}
 
 		[Fact]
-		public void Geometry()
+		public void QueryGeometry()
 		{
-			DoQuery("geometry", "Geometry", "GEOMETRY", new object[]
+			var geometryData = new byte[][]
 			{
 				null,
 				new byte[] { 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 240, 63, 0, 0, 0, 0, 0, 0, 240, 63 },
 				new byte[] { 0, 0, 0, 0, 1, 2, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 240, 63, 0, 0, 0, 0, 0, 0, 240, 63, 0, 0, 0, 0, 0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 64 }
-			},
+			};
+
+			DoQuery("geometry", "Geometry", "GEOMETRY", geometryData.ToArray(),
 #if !BASELINE
 				GetBytes
 #else
@@ -1024,6 +1028,31 @@ insert into date_time_kind(d, dt0, dt1, dt2, dt3, dt4, dt5, dt6) values(?, ?, ?,
 				x => x.IsDBNull(0) ? throw new GetValueWhenNullException() : x.GetValue(0)
 #endif
 				);
+
+			DoQuery<GetGeometryWhenNullException>("geometry", "Geometry", "GEOMETRY", geometryData.Select(CreateGeometry).ToArray(),
+				reader => reader.GetMySqlGeometry(0),
+				matchesDefaultType: false,
+#if BASELINE
+				omitGetFieldValueTest: true, // https://bugs.mysql.com/bug.php?id=96500
+				omitWhereTest: true, // https://bugs.mysql.com/bug.php?id=96498
+#endif
+#if BASELINE
+				assertEqual: (x, y) => Assert.Equal(((MySqlGeometry) x).Value, ((MySqlGeometry) y).Value)
+#else
+				assertEqual: (x, y) => Assert.Equal(((MySqlGeometry) x)?.Value.ToArray(), ((MySqlGeometry) y)?.Value.ToArray())
+#endif
+				);
+		}
+
+		private static object CreateGeometry(byte[] data)
+		{
+			if (data is null)
+				return null;
+#if BASELINE
+			return new MySqlGeometry(MySqlDbType.Geometry, data);
+#else
+			return MySqlGeometry.FromMySql(data);
+#endif
 		}
 
 #if !NETCOREAPP1_1_2
@@ -1364,9 +1393,10 @@ create table schema_table({createColumn});");
 			bool matchesDefaultType = true,
 			MySqlConnection connection = null,
 			Action<object, object> assertEqual = null,
-			Type getFieldValueType = null)
+			Type getFieldValueType = null,
+			bool omitGetFieldValueTest = false)
 		{
-			DoQuery<GetValueWhenNullException>(table, column, dataTypeName, expected, getValue, baselineCoercedNullValue, omitWhereTest, matchesDefaultType, connection, assertEqual, getFieldValueType);
+			DoQuery<GetValueWhenNullException>(table, column, dataTypeName, expected, getValue, baselineCoercedNullValue, omitWhereTest, matchesDefaultType, connection, assertEqual, getFieldValueType, omitGetFieldValueTest);
 		}
 
 		// NOTE: baselineCoercedNullValue is to work around inconsistencies in mysql-connector-net; DBNull.Value will
@@ -1382,7 +1412,8 @@ create table schema_table({createColumn});");
 			bool matchesDefaultType = true,
 			MySqlConnection connection = null,
 			Action<object, object> assertEqual = null,
-			Type getFieldValueType = null)
+			Type getFieldValueType = null,
+			bool omitGetFieldValueTest = false)
 			where TException : Exception
 		{
 			connection = connection ?? Connection;
@@ -1421,24 +1452,27 @@ create table schema_table({createColumn});");
 								Assert.Equal(value.GetType(), reader.GetFieldType(column.Replace("`", "")));
 							}
 
-							// test `reader.GetFieldValue<value.GetType()>`
-							var syncMethod = typeof(MySqlDataReader)
-								.GetMethod("GetFieldValue")
-								.MakeGenericMethod(getFieldValueType ?? value.GetType());
-							assertEqual(value, syncMethod.Invoke(reader, new object[] { 0 }));
+							if (!omitGetFieldValueTest)
+							{
+								// test `reader.GetFieldValue<value.GetType()>`
+								var syncMethod = typeof(MySqlDataReader)
+									.GetMethod("GetFieldValue")
+									.MakeGenericMethod(getFieldValueType ?? value.GetType());
+								assertEqual(value, syncMethod.Invoke(reader, new object[] { 0 }));
 
-							// test `reader.GetFieldValueAsync<value.GetType()>`
-							var asyncMethod = typeof(MySqlDataReader)
-								.GetMethod("GetFieldValueAsync", new[] { typeof(int) })
-								.MakeGenericMethod(getFieldValueType ?? value.GetType());
-							var asyncMethodValue = asyncMethod.Invoke(reader, new object[] { 0 });
-							var asyncMethodGetAwaiter = asyncMethodValue.GetType()
-								.GetMethod("GetAwaiter");
-							var asyncMethodGetAwaiterValue = asyncMethodGetAwaiter.Invoke(asyncMethodValue, new object[] { });
-							var asyncMethodGetResult = asyncMethodGetAwaiterValue.GetType()
-								.GetMethod("GetResult");
-							var asyncMethodGetResultValue = asyncMethodGetResult.Invoke(asyncMethodGetAwaiterValue, new object[] { });
-							assertEqual(value, asyncMethodGetResultValue);
+								// test `reader.GetFieldValueAsync<value.GetType()>`
+								var asyncMethod = typeof(MySqlDataReader)
+									.GetMethod("GetFieldValueAsync", new[] { typeof(int) })
+									.MakeGenericMethod(getFieldValueType ?? value.GetType());
+								var asyncMethodValue = asyncMethod.Invoke(reader, new object[] { 0 });
+								var asyncMethodGetAwaiter = asyncMethodValue.GetType()
+									.GetMethod("GetAwaiter");
+								var asyncMethodGetAwaiterValue = asyncMethodGetAwaiter.Invoke(asyncMethodValue, new object[] { });
+								var asyncMethodGetResult = asyncMethodGetAwaiterValue.GetType()
+									.GetMethod("GetResult");
+								var asyncMethodGetResultValue = asyncMethodGetResult.Invoke(asyncMethodGetAwaiterValue, new object[] { });
+								assertEqual(value, asyncMethodGetResultValue);
+							}
 						}
 					}
 					Assert.False(reader.Read());
