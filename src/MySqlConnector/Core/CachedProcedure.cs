@@ -75,7 +75,7 @@ namespace MySqlConnector.Core
 				cmd.CommandText = @"SELECT COUNT(*)
 					FROM information_schema.routines
 					WHERE ROUTINE_SCHEMA = @schema AND ROUTINE_NAME = @component;
-					SELECT ORDINAL_POSITION, PARAMETER_MODE, PARAMETER_NAME, DATA_TYPE, DTD_IDENTIFIER
+					SELECT ORDINAL_POSITION, PARAMETER_MODE, PARAMETER_NAME, DTD_IDENTIFIER
 					FROM information_schema.parameters
 					WHERE SPECIFIC_SCHEMA = @schema AND SPECIFIC_NAME = @component
 					ORDER BY ORDINAL_POSITION";
@@ -90,13 +90,14 @@ namespace MySqlConnector.Core
 
 					while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
 					{
+						var dataType = ParseDataType(reader.GetString(3), out var unsigned, out var length);
 						parameters.Add(new CachedParameter(
 							reader.GetInt32(0),
 							!reader.IsDBNull(1) ? reader.GetString(1) : null,
 							!reader.IsDBNull(2) ? reader.GetString(2) : null,
-							reader.GetString(3),
-							reader.GetString(4).IndexOf("unsigned", StringComparison.OrdinalIgnoreCase) != -1,
-							0
+							dataType,
+							unsigned,
+							length
 						));
 					}
 				}

@@ -172,5 +172,28 @@ param4 INTEGER(3)
 				},
 			};
 		}
+
+		[Theory]
+		[InlineData("INT", "INT", false, 0)]
+		[InlineData("INTEGER", "INT", false, 0)]
+		[InlineData("INT(11)", "INT", false, 11)]
+		[InlineData("INTEGER(11)", "INT", false, 11)]
+		[InlineData("INT(11) UNSIGNED", "INT", true, 11)]
+		[InlineData("INT(11) ZEROFILL", "INT", false, 11)]
+		[InlineData("INT(11) UNSIGNED ZEROFILL", "INT", true, 11)]
+		[InlineData("BIGINT(20)", "BIGINT", false, 20)]
+		[InlineData("TINYINT(1) UNSIGNED", "TINYINT", true, 1)]
+		[InlineData("BOOL", "TINYINT", false, 1)]
+		[InlineData("NUMERIC(30,20)", "DECIMAL", false, 30)]
+		[InlineData("VARCHAR(300)", "VARCHAR", false, 300)]
+		[InlineData("VARCHAR(300) CHARSET utf8mb4", "VARCHAR", false, 300)]
+		[InlineData("VARCHAR(300) COLLATE ascii_general_ci", "VARCHAR", false, 300)]
+		[InlineData("BINARY(16)", "BINARY", false, 16)]
+		[InlineData("CHAR(36)", "CHAR", false, 36)]
+		public void ParseDataType(string sql, string expectedDataType, bool expectedUnsigned, int expectedLength)
+		{
+			var dataType = CachedProcedure.ParseDataType(sql, out var unsigned, out var length);
+			Assert.Equal((expectedDataType, expectedUnsigned, expectedLength), (dataType, unsigned, length));
+		}
 	}
 }
