@@ -492,7 +492,7 @@ namespace MySql.Data.MySqlClient
 			}
 		}
 
-		internal async Task<CachedProcedure?> GetCachedProcedure(IOBehavior ioBehavior, string name, CancellationToken cancellationToken)
+		internal async Task<CachedProcedure?> GetCachedProcedure(string name, bool revalidateMissing, IOBehavior ioBehavior, CancellationToken cancellationToken)
 		{
 			if (Log.IsDebugEnabled())
 				Log.Debug("Session{0} getting cached procedure Name={1}", m_session!.Id, name);
@@ -517,7 +517,7 @@ namespace MySql.Data.MySqlClient
 			bool foundProcedure;
 			lock (cachedProcedures)
 				foundProcedure = cachedProcedures.TryGetValue(normalized.FullyQualified, out cachedProcedure);
-			if (!foundProcedure)
+			if (!foundProcedure || (cachedProcedure is null && revalidateMissing))
 			{
 				cachedProcedure = await CachedProcedure.FillAsync(ioBehavior, this, normalized.Schema!, normalized.Component!, cancellationToken).ConfigureAwait(false);
 				if (Log.IsWarnEnabled())

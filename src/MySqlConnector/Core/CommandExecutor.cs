@@ -36,7 +36,7 @@ namespace MySqlConnector.Core
 					var commandText = command2.CommandText!;
 					if (!cachedProcedures.ContainsKey(commandText))
 					{
-						cachedProcedures.Add(commandText, await connection.GetCachedProcedure(ioBehavior, commandText, cancellationToken).ConfigureAwait(false));
+						cachedProcedures.Add(commandText, await connection.GetCachedProcedure(commandText, revalidateMissing: false, ioBehavior, cancellationToken).ConfigureAwait(false));
 
 						// because the connection was used to execute a MySqlDataReader with the connection's DefaultCommandTimeout,
 						// we need to reapply the command's CommandTimeout (even if some of the time has elapsed)
