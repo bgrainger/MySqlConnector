@@ -3,7 +3,7 @@ name: Publish Package
 on:
   push:
     branches:
-    - 'master'
+    - 'github-actions'
     paths-ignore:
     - 'docs/**'
 
@@ -28,13 +28,16 @@ jobs:
       run: dotnet restore
 
     - name: Build
-      run: dotnet build --configuration Release
+      run: dotnet build --configuration Release --no-restore
 
     - name: Unit Tests
-      run: dotnet test --configuration Release tests\MySqlConnector.Tests
+      run: dotnet test --configuration Release tests\MySqlConnector.Tests --no-build --no-restore
+
+    - name: Conformance Tests
+      run: dotnet test --configuration Release tests\Conformance.Tests --no-build --no-restore
 
     - name: Pack
-      run: dotnet pack --configuration Release --no-build --version-suffix $(Get-Date -Format "'preview'yyyyMMddHHmmss'+${{ github.sha }}'")
+      run: dotnet pack --configuration Release --no-build --no-restore --version-suffix $(Get-Date -Format "'preview'yyyyMMddHHmmss'+${{ github.sha }}'")
 
     - name: Install NuGet
       run: choco install nuget.commandline
