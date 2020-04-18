@@ -21,7 +21,7 @@ jobs:
 
     - name: Install MySQL 8.0.18
       run: |
-        mkdir C:\mysql
+        mkdir C:\mysql -Force
         CD /D C:\mysql
         curl -fsS --retry 3 --retry-connrefused -o mysql.msi https://cdn.mysql.com/archives/mysql-installer/mysql-installer-community-8.0.18.0.msi
         msiexec /q /log install.txt /i mysql.msi datadir=C:\mysql installdir=C:\mysql
