@@ -38,10 +38,10 @@ jobs:
 
     - name: Wait for Docker container
       run: |
-      for ($i = 1; $i -le 10; $i++)
-      {
-        mysql -P33060 -uroot -ptest -e "SELECT 1;"
-      }
+        for ($i = 1; $i -le 10; $i++)
+        {
+          mysql -P33060 -uroot -ptest -e "SELECT 1;"
+        }
 
     - name: Conformance Tests
       run: dotnet test --configuration Release tests\Conformance.Tests --no-build --no-restore
