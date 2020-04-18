@@ -22,10 +22,9 @@ jobs:
     - name: Install MySQL 8.0.18
       run: |
         mkdir C:\mysql -Force
-        CD /D C:\mysql
-        curl -fsS --retry 3 --retry-connrefused -o mysql.msi https://cdn.mysql.com/archives/mysql-installer/mysql-installer-community-8.0.18.0.msi
-        msiexec /q /log install.txt /i mysql.msi datadir=C:\mysql installdir=C:\mysql
-        call "C:\Program Files (x86)\MySQL\MySQL Installer for Windows\MySQLInstallerConsole.exe" community install server;8.0.18;x64:*:port=3306;rootpasswd=test;servicename=MySQL -silent
+        Invoke-WebRequest -Uri https://cdn.mysql.com/archives/mysql-installer/mysql-installer-community-8.0.18.0.msi -OutFile C:\mysql\mysql.msi
+        msiexec /q /log install.txt /i c:\mysql\mysql.msi datadir=C:\mysql installdir=C:\mysql
+        & "C:\Program Files (x86)\MySQL\MySQL Installer for Windows\MySQLInstallerConsole.exe" community install server;8.0.18;x64:*:port=3306;rootpasswd=test;servicename=MySQL -silent
         netsh advfirewall firewall add rule name="Allow mysql" dir=in action=allow edge=yes remoteip=any protocol=TCP localport=3306
 
     - name: Configure MySQL Server
