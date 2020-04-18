@@ -19,6 +19,9 @@ jobs:
     steps:
     - uses: actions/checkout@v1
 
+    - name: Run MySQL 8.0 Docker container
+      run: docker run -v "$(Get-Location)/server:/etc/mysql/conf.d:ro" -p $33060:3306 --name mysql -e MYSQL_ROOT_PASSWORD='test' mysql:8.0.19 --log-bin-trust-function-creators=1 --local-infile=1 --secure-file-priv=/var/tmp --max-connections=250 --default-authentication-plugin=mysql_native_password
+
     - name: Set up .NET Core
       uses: actions/setup-dotnet@v1
       with:
@@ -33,8 +36,17 @@ jobs:
     - name: Unit Tests
       run: dotnet test --configuration Release tests\MySqlConnector.Tests --no-build --no-restore
 
+    - name: Wait for Docker container
+      run: |
+      for ($i = 1; $i -le 10; $i++)
+      {
+        mysql -P33060 -uroot -ptest -e "SELECT 1;"
+      }
+
     - name: Conformance Tests
       run: dotnet test --configuration Release tests\Conformance.Tests --no-build --no-restore
+      env:
+        CONNECTION_STRING: "Server=localhost;Port=33060;User Id=root;Password=test;SSL Mode=None"
 
     - name: Pack
       run: dotnet pack --configuration Release --no-build --no-restore --version-suffix $(Get-Date -Format "'preview'yyyyMMddHHmmss'+${{ github.sha }}'")
