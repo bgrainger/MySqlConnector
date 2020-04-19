@@ -24,6 +24,7 @@ jobs:
         mkdir ${{ runner.temp}}\mysql
         Invoke-WebRequest -Uri https://cdn.mysql.com/archives/mysql-installer/mysql-installer-community-8.0.18.0.msi -OutFile "${{ runner.temp}}\mysql\mysql.msi"
         msiexec /q /log install.txt /i "${{ runner.temp}}\mysql\mysql.msi" datadir="${{ runner.temp}}\mysql" installdir="${{ runner.temp}}\mysql"
+        & "C:\Program Files (x86)\MySQL\MySQL Installer for Windows\MySQLInstallerConsole.exe" community install "server;8.0.18;x64:*:port=3306;rootpasswd=test;servicename=MySQL" -silent
 
     - name: Configure MySQL Server
       run: |
