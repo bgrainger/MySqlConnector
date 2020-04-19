@@ -22,6 +22,7 @@ jobs:
     - name: Install MySQL 8.0.18
       run: |
         mkdir mysql
+        Invoke-WebRequest -Uri https://cdn.mysql.com/archives/mysql-installer/mysql-installer-community-8.0.18.0.msi -OutFile "$(Get-Location)\mysql\mysql.msi"
 
     - name: Configure MySQL Server
       run: |
