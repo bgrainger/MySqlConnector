@@ -23,6 +23,7 @@ jobs:
       run: |
         mkdir mysql
         Invoke-WebRequest -Uri https://cdn.mysql.com/archives/mysql-installer/mysql-installer-community-8.0.18.0.msi -OutFile "$(Get-Location)\mysql\mysql.msi"
+        msiexec /q /log install.txt /i "$(Get-Location)\mysql\mysql.msi" datadir="$(Get-Location)\mysql" installdir="$(Get-Location)\mysql"
 
     - name: Configure MySQL Server
       run: |
