@@ -16,6 +16,7 @@ steps:
     artifactName: ${{ format('SideBySide-{0}-$(Agent.OS)', parameters.platform) }}
     targetPath: ${{ format('$(Build.BinariesDirectory)/{0}', parameters.platform) }}
 - task: DotNetCoreCLI@2
+  condition: ne(variables['Agent.OS'], 'Windows_NT')
   displayName: ${{ format('{0} {1} Tests', parameters.platform, parameters.description) }}
   inputs:
     command: 'custom'
@@ -29,8 +30,25 @@ steps:
     DATA__MYSQLBULKLOADERLOCALTSVFILE: '$(Build.Repository.LocalPath)/tests/TestData/LoadData_UTF8_BOM_Unix.TSV'
     DATA__SOCKETPATH: '$(Build.Repository.LocalPath)/.ci/run/mysql/mysqld.sock'
     TF_BUILD: $(TF_BUILD)
+- task: VSTest@2
+  condition: eq(variables['Agent.OS'], 'Windows_NT')
+  displayName: ${{ format('{0} {1} Tests', parameters.platform, parameters.description) }}
+  inputs:
+    testSelector: testAssemblies
+    testAssemblyVer2: ${{  format('$(Build.BinariesDirectory)/{0}/SideBySide.dll', parameters.platform) }}
+    codeCoverageEnabled: False
+    runInParallel: True
+    testRunTitle: ${{ format('{0}, $(Agent.OS), {1}, {2}', parameters.image, parameters.platform, parameters.description) }}
+  env:
+    DATA__UNSUPPORTEDFEATURES: ${{ parameters.unsupportedFeatures }}
+    DATA__CONNECTIONSTRING: ${{ parameters.connectionString }}
+    DATA__CERTIFICATESPATH: '$(Build.Repository.LocalPath)/.ci/server/certs/'
+    DATA__MYSQLBULKLOADERLOCALCSVFILE: '$(Build.Repository.LocalPath)/tests/TestData/LoadData_UTF8_BOM_Unix.CSV'
+    DATA__MYSQLBULKLOADERLOCALTSVFILE: '$(Build.Repository.LocalPath)/tests/TestData/LoadData_UTF8_BOM_Unix.TSV'
+    DATA__SOCKETPATH: '$(Build.Repository.LocalPath)/.ci/run/mysql/mysqld.sock'
+    TF_BUILD: $(TF_BUILD)
 - task: PublishTestResults@2
-  condition: always()
+  condition: and(always(), ne(variables['Agent.OS'], 'Windows_NT'))
   inputs:
     testResultsFormat: VSTest
     testResultsFiles: '**/*.trx'

@@ -123,6 +123,10 @@ jobs:
     displayName: 'Install .NET Core'
     inputs:
       version: $(DotNetCoreSdkVersion)
+  - task: VisualStudioTestPlatformInstaller@1
+    inputs:
+      packageFeedSelector: 'nugetOrg'
+      versionSelector: 'latestStable'
   - template: '.ci/conformance-test-steps.yml'
     parameters:
       image: 'mysql-8.0.15'
