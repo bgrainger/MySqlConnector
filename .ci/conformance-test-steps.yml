@@ -1,0 +1,29 @@
+parameters:
+  image: ''
+  connectionString: ''
+
+steps:
+- task: DeleteFiles@1
+  condition: always()
+  inputs:
+    contents: '**/*.trx'
+- task: DownloadPipelineArtifact@0
+  condition: always()
+  inputs:
+    artifactName: 'Conformance.Tests-3.0-$(Agent.OS)'
+    targetPath: '$(Build.BinariesDirectory)/3.0'
+- task: DotNetCoreCLI@2
+  displayName: 'Conformance Tests'
+  inputs:
+    command: 'custom'
+    custom: 'vstest'
+    arguments: '$(Build.BinariesDirectory)/3.0/Conformance.Tests.dll /logger:trx'
+  env:
+    CONNECTION_STRING: ${{ parameters.connectionString }}
+- task: PublishTestResults@2
+  condition: always()
+  inputs:
+    testResultsFormat: VSTest
+    testResultsFiles: '**/*.trx'
+    testRunTitle: ${{ format('Conformance Tests, {0}, $(Agent.OS)', parameters.image) }}
+    failTaskOnFailedTests: true

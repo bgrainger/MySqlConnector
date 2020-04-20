@@ -9,7 +9,6 @@ steps:
   displayName: Install MySQL Server
 - script: |
     "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql" -uroot -ptest -e "SET GLOBAL local_infile=1; SET GLOBAL log_bin_trust_function_creators=1;"
-    "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql" -uroot -ptest -e "CREATE SCHEMA conformance COLLATE utf8mb4_bin;"
     "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql" -uroot -ptest < $(Build.Repository.LocalPath)\.ci\server\init.sql
     "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql" -uroot -ptest < $(Build.Repository.LocalPath)\.ci\server\init_sha256.sql
     "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql" -uroot -ptest < $(Build.Repository.LocalPath)\.ci\server\init_caching_sha2.sql

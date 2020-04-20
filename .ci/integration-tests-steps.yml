@@ -6,6 +6,10 @@ parameters:
 steps:
 - bash: ${{ format('.ci/docker-run.sh {0} 3300 {1}', parameters.image, parameters.unsupportedFeatures) }}
   displayName: 'Start Docker container'
+- template: 'conformance-test-steps.yml'
+  parameters:
+    image: ${{ parameters.image }}
+    connectionString: 'server=localhost;port=3300;user id=mysqltest;password=test;database=conformance;ssl mode=none;DefaultCommandTimeout=3600'
 - template: 'sidebyside-test-steps.yml'
   parameters:
     image: ${{ parameters.image }}
