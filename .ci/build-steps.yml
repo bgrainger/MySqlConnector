@@ -47,18 +47,6 @@ steps:
     targetPath: 'tests/Conformance.Tests/bin/Release/netcoreapp3.0/publish'
 
 - task: DotNetCoreCLI@2
-  displayName: 'Publish SideBySide (2.0)'
-  inputs:
-    command: 'publish'
-    arguments: '-c Release -f netcoreapp2.0 tests/SideBySide/SideBySide.csproj'
-    publishWebProjects: false
-    zipAfterPublish: false
-- task: PublishPipelineArtifact@0
-  inputs:
-    artifactName: 'SideBySide-netcoreapp2.0-$(Agent.OS)'
-    targetPath: 'tests/SideBySide/bin/Release/netcoreapp2.0/publish'
-
-- task: DotNetCoreCLI@2
   displayName: 'Publish SideBySide (2.1)'
   inputs:
     command: 'publish'

@@ -36,7 +36,7 @@ steps:
   inputs:
     testSelector: testAssemblies
     testAssemblyVer2: ${{  format('$(Build.BinariesDirectory)/{0}/SideBySide.dll', parameters.platform) }}
-    codeCoverageEnabled: False
+    codeCoverageEnabled: True
     runInParallel: True
     testRunTitle: ${{ format('{0}, $(Agent.OS), {1}, {2}', parameters.image, parameters.platform, parameters.description) }}
   env:

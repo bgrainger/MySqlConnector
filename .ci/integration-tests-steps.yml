@@ -15,22 +15,15 @@ steps:
     image: ${{ parameters.image }}
     unsupportedFeatures: ${{ parameters.unsupportedFeatures }}
     connectionString: 'server=localhost;port=3300;user id=mysqltest;password=test;database=mysqltest;ssl mode=none;DefaultCommandTimeout=3600'
-    platform: 'netcoreapp2.0'
+    platform: 'netcoreapp2.1'
     description: 'No SSL'
 - template: 'sidebyside-test-steps.yml'
   parameters:
     image: ${{ parameters.image }}
     unsupportedFeatures: ${{ parameters.unsupportedFeatures }}
     connectionString: 'server=localhost;port=3300;user id=mysqltest;password=test;database=mysqltest;ssl mode=required;DefaultCommandTimeout=3600;certificate file=$(Build.Repository.LocalPath)/.ci/server/certs/ssl-client.pfx'
-    platform: 'netcoreapp2.0'
-    description: 'SSL'
-- template: 'sidebyside-test-steps.yml'
-  parameters:
-    image: ${{ parameters.image }}
-    unsupportedFeatures: ${{ parameters.unsupportedFeatures }}
-    connectionString: 'server=localhost;port=3300;user id=mysqltest;password=test;database=mysqltest;ssl mode=none;DefaultCommandTimeout=3600'
     platform: 'netcoreapp2.1'
-    description: 'No SSL'
+    description: 'SSL'
 - task: UseDotNet@2
   displayName: 'Install .NET Core'
   inputs:

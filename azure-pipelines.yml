@@ -129,18 +129,18 @@ jobs:
       versionSelector: 'latestStable'
   - template: '.ci/conformance-test-steps.yml'
     parameters:
-      image: 'mysql-8.0.15'
+      image: 'mysql:8.0'
       connectionString: 'server=localhost;port=3306;user id=mysqltest;password=test;database=conformance;ssl mode=none;DefaultCommandTimeout=3600;AllowPublicKeyRetrieval=True'
   - template: '.ci/sidebyside-test-steps.yml'
     parameters:
-      image: 'mysql-8.0.15'
+      image: 'mysql:8.0'
       unsupportedFeatures: 'Ed25519,Tls11,UnixDomainSocket'
       connectionString: 'server=localhost;port=3306;user id=mysqltest;password=test;database=mysqltest;ssl mode=none;DefaultCommandTimeout=3600;AllowPublicKeyRetrieval=True'
       platform: 'netcoreapp3.0'
       description: 'No SSL'
   - template: '.ci/sidebyside-test-steps.yml'
     parameters:
-      image: 'mysql-8.0.15'
+      image: 'mysql:8.0'
       unsupportedFeatures: 'Ed25519,Tls11,UnixDomainSocket'
       connectionString: 'server=localhost;port=3306;user id=mysqltest;password=test;database=mysqltest;ssl mode=none;UseCompression=True;DefaultCommandTimeout=3600;AllowPublicKeyRetrieval=True'
       platform: 'netcoreapp3.0'
@@ -162,9 +162,6 @@ jobs:
       'MySQL 8.0':
         image: 'mysql:8.0'
         unsupportedFeatures: 'Ed25519,Tls11'
-      'Percona 5.7':
-        image: 'percona:5.7.22'
-        unsupportedFeatures: 'CachingSha2Password,Ed25519,Tls13,UuidToBin'
       'MariaDB 10.2':
         image: 'mariadb:10.2'
         unsupportedFeatures: 'Ed25519,Json,Sha256Password,CachingSha2Password,RoundDateTime,UuidToBin'
