@@ -15,30 +15,10 @@ steps:
   inputs:
     artifactName: ${{ format('SideBySide-{0}-$(Agent.OS)', parameters.platform) }}
     targetPath: ${{ format('$(Build.BinariesDirectory)/{0}', parameters.platform) }}
-- task: DotNetCoreCLI@2
-  condition: ne(variables['Agent.OS'], 'Windows_NT')
+- task: CmdLine@2
   displayName: ${{ format('{0} {1} Tests', parameters.platform, parameters.description) }}
   inputs:
-    command: 'custom'
-    custom: 'vstest'
-    arguments: ${{  format('$(Build.BinariesDirectory)/{0}/SideBySide.dll /logger:trx', parameters.platform) }}
-  env:
-    DATA__UNSUPPORTEDFEATURES: ${{ parameters.unsupportedFeatures }}
-    DATA__CONNECTIONSTRING: ${{ parameters.connectionString }}
-    DATA__CERTIFICATESPATH: '$(Build.Repository.LocalPath)/.ci/server/certs/'
-    DATA__MYSQLBULKLOADERLOCALCSVFILE: '$(Build.Repository.LocalPath)/tests/TestData/LoadData_UTF8_BOM_Unix.CSV'
-    DATA__MYSQLBULKLOADERLOCALTSVFILE: '$(Build.Repository.LocalPath)/tests/TestData/LoadData_UTF8_BOM_Unix.TSV'
-    DATA__SOCKETPATH: '$(Build.Repository.LocalPath)/.ci/run/mysql/mysqld.sock'
-    TF_BUILD: $(TF_BUILD)
-- task: VSTest@2
-  condition: eq(variables['Agent.OS'], 'Windows_NT')
-  displayName: ${{ format('{0} {1} Tests', parameters.platform, parameters.description) }}
-  inputs:
-    testSelector: testAssemblies
-    testAssemblyVer2: ${{  format('$(Build.BinariesDirectory)/{0}/SideBySide.dll', parameters.platform) }}
-    codeCoverageEnabled: True
-    runInParallel: True
-    testRunTitle: ${{ format('{0}, $(Agent.OS), {1}, {2}', parameters.image, parameters.platform, parameters.description) }}
+    script: ${{ format('./tools/coverlet $(Build.BinariesDirectory)/{0}/SideBySide.dll --target "dotnet" --targetargs "vstest $(Build.BinariesDirectory)/{0}/SideBySide.dll /logger:trx" --format cobertura', parameters.platform) }}
   env:
     DATA__UNSUPPORTEDFEATURES: ${{ parameters.unsupportedFeatures }}
     DATA__CONNECTIONSTRING: ${{ parameters.connectionString }}
@@ -48,9 +28,13 @@ steps:
     DATA__SOCKETPATH: '$(Build.Repository.LocalPath)/.ci/run/mysql/mysqld.sock'
     TF_BUILD: $(TF_BUILD)
 - task: PublishTestResults@2
-  condition: and(always(), ne(variables['Agent.OS'], 'Windows_NT'))
+  condition: always()
   inputs:
     testResultsFormat: VSTest
     testResultsFiles: '**/*.trx'
     testRunTitle: ${{ format('{0}, $(Agent.OS), {1}, {2}', parameters.image, parameters.platform, parameters.description) }}
     failTaskOnFailedTests: true
+- task: PublishCodeCoverageResults@1
+  inputs:
+    codeCoverageTool: cobertura
+    summaryFileLocation: coverage.cobertura.xml

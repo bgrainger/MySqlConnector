@@ -123,10 +123,12 @@ jobs:
     displayName: 'Install .NET Core'
     inputs:
       version: $(DotNetCoreSdkVersion)
-  - task: VisualStudioTestPlatformInstaller@1
+  - task: DotNetCoreCLI@2
+    displayName: "Install coverlet"
     inputs:
-      packageFeedSelector: 'nugetOrg'
-      versionSelector: 'latestStable'
+      command: 'custom'
+      custom: 'tool'
+      arguments: 'install --tool-path tools coverlet.console'
   - template: '.ci/conformance-test-steps.yml'
     parameters:
       image: 'mysql:8.0'

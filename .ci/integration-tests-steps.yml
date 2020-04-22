@@ -6,6 +6,12 @@ parameters:
 steps:
 - bash: ${{ format('.ci/docker-run.sh {0} 3300 {1}', parameters.image, parameters.unsupportedFeatures) }}
   displayName: 'Start Docker container'
+- task: DotNetCoreCLI@2
+  displayName: "Install coverlet"
+  inputs:
+    command: 'custom'
+    custom: 'tool'
+    arguments: 'install --tool-path tools coverlet.console'
 - template: 'conformance-test-steps.yml'
   parameters:
     image: ${{ parameters.image }}
