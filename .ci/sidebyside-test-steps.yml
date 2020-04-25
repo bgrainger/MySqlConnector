@@ -15,10 +15,12 @@ steps:
   inputs:
     artifactName: ${{ format('SideBySide-{0}-$(Agent.OS)', parameters.platform) }}
     targetPath: ${{ format('$(Build.BinariesDirectory)/{0}', parameters.platform) }}
-- task: CmdLine@2
+- task: DotNetCoreCLI@2
   displayName: ${{ format('{0} {1} Tests', parameters.platform, parameters.description) }}
   inputs:
-    script: ${{ format('./tools/coverlet $(Build.BinariesDirectory)/{0}/SideBySide.dll --target "dotnet" --targetargs "test $(Build.BinariesDirectory)/{0}/SideBySide.dll /logger:trx" --format cobertura', parameters.platform) }}
+    command: 'custom'
+    custom: 'vstest'
+    arguments: ${{  format('$(Build.BinariesDirectory)/{0}/SideBySide.dll /logger:trx', parameters.platform) }}
   env:
     DATA__UNSUPPORTEDFEATURES: ${{ parameters.unsupportedFeatures }}
     DATA__CONNECTIONSTRING: ${{ parameters.connectionString }}
@@ -34,7 +36,3 @@ steps:
     testResultsFiles: '**/*.trx'
     testRunTitle: ${{ format('{0}, $(Agent.OS), {1}, {2}', parameters.image, parameters.platform, parameters.description) }}
     failTaskOnFailedTests: true
-- task: PublishCodeCoverageResults@1
-  inputs:
-    codeCoverageTool: cobertura
-    summaryFileLocation: coverage.cobertura.xml

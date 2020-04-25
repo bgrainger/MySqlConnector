@@ -20,7 +20,7 @@ steps:
   displayName: 'Build'
   inputs:
     command: 'build'
-    arguments: '-c Release'
+    arguments: '-c Release --no-restore'
 
 - task: DotNetCoreCLI@2
   displayName: 'Publish MySqlConnector.Tests'
