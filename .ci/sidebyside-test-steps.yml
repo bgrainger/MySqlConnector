@@ -18,7 +18,7 @@ steps:
 - task: CmdLine@2
   displayName: ${{ format('{0} {1} Tests', parameters.platform, parameters.description) }}
   inputs:
-    script: ${{ format('./tools/coverlet $(Build.BinariesDirectory)/{0}/SideBySide.dll --target "dotnet" --targetargs "vstest $(Build.BinariesDirectory)/{0}/SideBySide.dll /logger:trx" --format cobertura', parameters.platform) }}
+    script: ${{ format('./tools/coverlet $(Build.BinariesDirectory)/{0}/SideBySide.dll --target "dotnet" --targetargs "test $(Build.BinariesDirectory)/{0}/SideBySide.dll /logger:trx" --format cobertura', parameters.platform) }}
   env:
     DATA__UNSUPPORTEDFEATURES: ${{ parameters.unsupportedFeatures }}
     DATA__CONNECTIONSTRING: ${{ parameters.connectionString }}
