@@ -181,17 +181,17 @@ jobs:
     inputs:
       version: $(DotNetCoreSdkVersion)
   - task: DotNetCoreCLI@2
-    displayName: 'Install coverlet'
+    displayName: 'Install AltCover'
     inputs:
       command: 'custom'
       custom: 'add'
-      arguments: 'tests\SideBySide\SideBySide.csproj package coverlet.collector'
+      arguments: 'tests\SideBySide\SideBySide.csproj package AltCover'
   - task: DotNetCoreCLI@2
     displayName: 'Run SideBySide tests'
     inputs:
       command: 'test'
       projects: 'tests\SideBySide\SideBySide.csproj'
-      arguments: '--configuration Release --framework netcoreapp3.0 --collect "XPlat Code Coverage" -r $(Agent.TempDirectory)/'
+      arguments: '--configuration Release --framework netcoreapp3.0 /p:AltCover=true /p:AltCoverCobertura=$(Agent.TempDirectory)/sidebyside.cobertura.xml'
     env:
       DATA__UNSUPPORTEDFEATURES: 'Ed25519,Tls11,UnixDomainSocket'
       DATA__CONNECTIONSTRING: 'server=localhost;port=3306;user id=mysqltest;password=test;database=mysqltest;ssl mode=none;DefaultCommandTimeout=3600;AllowPublicKeyRetrieval=True'
