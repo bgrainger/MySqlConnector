@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup Condition=" '$(Configuration)' != 'Baseline' ">
     <TargetFrameworks>net452;net461;net472;netcoreapp1.1.2;netcoreapp2.0;netcoreapp2.1;netcoreapp3.0</TargetFrameworks>
@@ -26,7 +26,7 @@
 
   <ItemGroup>
     <!--testing packages-->
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.3.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.6.1" />
     <PackageReference Include="xunit" Version="2.4.1" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.4.1" />
     <!--app packages-->
