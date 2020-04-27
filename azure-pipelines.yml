@@ -161,3 +161,49 @@ jobs:
       image: $(image)
       unsupportedFeatures: $(unsupportedFeatures)
       DotNetCoreSdkVersion: $(DotNetCoreSdkVersion)
+
+- job: windows_coverage
+  displayName: 'Windows Coverage'
+  pool:
+    vmimage: 'windows-latest'
+  variables:
+    disable.coverage.autogenerate: 'true'
+  steps:
+  - template: '.ci/install-mysql-windows.yml'
+  - task: CopyFiles@2
+    displayName: 'Copy config.json'
+    inputs:
+      sourceFolder: '.ci/config'
+      contents: 'config.json'
+      targetFolder: 'tests/SideBySide'
+  - task: UseDotNet@2
+    displayName: 'Install .NET Core'
+    inputs:
+      version: $(DotNetCoreSdkVersion)
+  - task: DotNetCoreCLI@2
+    displayName: 'Install coverlet'
+    inputs:
+      command: 'custom'
+      custom: 'add'
+      arguments: 'tests\SideBySide\SideBySide.csproj package coverlet.msbuild'
+  - task: DotNetCoreCLI@2
+    displayName: 'Run SideBySide tests'
+    inputs:
+      command: 'test'
+      projects: 'tests\SideBySide\SideBySide.csproj'
+      arguments: '--configuration Release --framework netcoreapp3.0 /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Agent.TempDirectory)/'
+    env:
+      DATA__UNSUPPORTEDFEATURES: 'Ed25519,Tls11,UnixDomainSocket'
+      DATA__CONNECTIONSTRING: 'server=localhost;port=3306;user id=mysqltest;password=test;database=mysqltest;ssl mode=none;DefaultCommandTimeout=3600;AllowPublicKeyRetrieval=True'
+  - task: Palmmedia.reportgenerator.reportgenerator-build-release-task.reportgenerator@4
+    displayName: Generate Code Coverage Report
+    inputs:
+      reports: $(Agent.TempDirectory)/*.cobertura.xml
+      targetdir: $(build.artifactstagingdirectory)/TestResults/
+      reporttypes: 'HtmlInline_AzurePipelines;Cobertura;Badges'
+  - task: PublishCodeCoverageResults@1
+    displayName: 'Publish Code Coverage Results'
+    inputs:
+      codeCoverageTool: cobertura
+      summaryFileLocation: $(build.artifactstagingdirectory)/TestResults/cobertura.xml
+      reportDirectory: '$(build.artifactstagingdirectory)/TestResults'
