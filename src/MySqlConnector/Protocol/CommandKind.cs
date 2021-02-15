@@ -9,6 +9,7 @@ namespace MySqlConnector.Protocol
 		ChangeUser = 17,
 		StatementPrepare = 22,
 		StatementExecute = 23,
+		StatementSendLongData = 24,
 		ResetConnection = 31,
 		Multi = 254,
 	}

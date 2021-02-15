@@ -511,12 +511,9 @@ namespace MySqlConnector
 				writer.WriteLengthEncodedInteger(unchecked((ulong) geometry.ValueSpan.Length));
 				writer.Write(geometry.ValueSpan);
 			}
-			else if (Value is MemoryStream memoryStream)
+			else if (Value is Stream)
 			{
-				if (!memoryStream.TryGetBuffer(out var streamBuffer))
-					streamBuffer = new ArraySegment<byte>(memoryStream.ToArray());
-				writer.WriteLengthEncodedInteger(unchecked((ulong) streamBuffer.Count));
-				writer.Write(streamBuffer);
+				// do nothing; this will be sent via CommandKind.StatementSendLongData
 			}
 			else if (Value is float floatValue)
 			{

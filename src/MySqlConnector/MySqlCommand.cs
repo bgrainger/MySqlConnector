@@ -1,11 +1,14 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using MySqlConnector.Core;
+using MySqlConnector.Protocol;
 using MySqlConnector.Protocol.Serialization;
 using MySqlConnector.Utilities;
 
@@ -310,13 +313,37 @@ namespace MySqlConnector
 			return await ExecuteReaderNoResetTimeoutAsync(behavior, ioBehavior, cancellationToken).ConfigureAwait(false);
 		}
 
-		internal Task<MySqlDataReader> ExecuteReaderNoResetTimeoutAsync(CommandBehavior behavior, IOBehavior ioBehavior, CancellationToken cancellationToken)
+		internal async Task<MySqlDataReader> ExecuteReaderNoResetTimeoutAsync(CommandBehavior behavior, IOBehavior ioBehavior, CancellationToken cancellationToken)
 		{
 			if (!IsValid(out var exception))
-				return Utility.TaskFromException<MySqlDataReader>(exception);
+				throw exception;
+
+			if (((IMySqlCommand) this).TryGetPreparedStatements() is { Statements: { Count: 1 } } statements)
+			{
+				for (var i = 0; i < Parameters.Count; i++)
+				{
+					if (Parameters[i].Value is Stream stream)
+					{
+						var buffer = ArrayPool<byte>.Shared.Rent(1048576);
+						int bytesRead;
+						do
+						{
+							bytesRead = stream.Read(buffer, 0, buffer.Length);
+							var writer = new ByteBufferWriter();
+
+							writer.Write((byte) CommandKind.StatementSendLongData);
+							writer.Write(statements.Statements[0].StatementId);
+							writer.Write((ushort) i);
+							writer.Write(buffer.AsSpan(0, bytesRead));
+							await Connection!.Session.SendAsync(writer.ToPayloadData(), ioBehavior, cancellationToken).ConfigureAwait(false);
+						}
+						while (bytesRead > 0);
+					}
+				}
+			}
 
 			m_commandBehavior = behavior;
-			return CommandExecutor.ExecuteReaderAsync(new IMySqlCommand[] { this }, SingleCommandPayloadCreator.Instance, behavior, ioBehavior, cancellationToken);
+			return await CommandExecutor.ExecuteReaderAsync(new IMySqlCommand[] { this }, SingleCommandPayloadCreator.Instance, behavior, ioBehavior, cancellationToken).ConfigureAwait(false);
 		}
 
 		public MySqlCommand Clone() => new(this);
