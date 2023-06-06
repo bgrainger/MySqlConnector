@@ -1,5 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
+using System.Globalization;
 using System.Net;
 using System.Security.Authentication;
 using Microsoft.Extensions.Logging;
@@ -50,6 +52,7 @@ internal sealed class ConnectionPool : IDisposable
 				{
 					session = m_sessions.First!.Value;
 					m_sessions.RemoveFirst();
+					s_freeConnectionsCounter.Add(-1);
 				}
 			}
 			if (session is not null)
@@ -87,6 +90,7 @@ internal sealed class ConnectionPool : IDisposable
 						m_leasedSessions.Add(session.Id, session);
 						leasedSessionsCountPooled = m_leasedSessions.Count;
 					}
+					s_softConnectsCounter.Add(1);
 					ActivitySourceHelper.CopyTags(session.ActivityTags, activity);
 					Log.ReturningPooledSession(m_logger, Id, session.Id, leasedSessionsCountPooled);
 					return session;
@@ -161,6 +165,8 @@ internal sealed class ConnectionPool : IDisposable
 			{
 				lock (m_sessions)
 					m_sessions.AddFirst(session);
+				s_freeConnectionsCounter.Add(1);
+				s_softDisconnectsCounter.Add(1);
 			}
 			else
 			{
@@ -268,6 +274,7 @@ internal sealed class ConnectionPool : IDisposable
 			// bypass MySqlConnection.Dispose(Async), because it's a dummy MySqlConnection that's not set up
 			// properly, and simply return the session to the pool directly
 			await session.ReturnToPoolAsync(ioBehavior, null).ConfigureAwait(false);
+			s_reclaimedConnectionsCounter.Add(1);
 
 			// be explicit about keeping the associated MySqlConnection alive until the session has been returned
 			GC.KeepAlive(connection);
@@ -319,6 +326,7 @@ internal sealed class ConnectionPool : IDisposable
 						{
 							session = m_sessions.Last!.Value;
 							m_sessions.RemoveLast();
+							s_freeConnectionsCounter.Add(-1);
 						}
 					}
 					if (session is null)
@@ -335,6 +343,7 @@ internal sealed class ConnectionPool : IDisposable
 						// session should not be cleaned; put it back in the queue and stop iterating
 						lock (m_sessions)
 							m_sessions.AddLast(session);
+						s_freeConnectionsCounter.Add(1);
 						return;
 					}
 				}
@@ -380,6 +389,7 @@ internal sealed class ConnectionPool : IDisposable
 				AdjustHostConnectionCount(session, 1);
 				lock (m_sessions)
 					m_sessions.AddFirst(session);
+				s_freeConnectionsCounter.Add(1);
 			}
 			finally
 			{
@@ -765,6 +775,16 @@ internal sealed class ConnectionPool : IDisposable
 	private static void OnAppDomainShutDown(object? sender, EventArgs e) =>
 		ClearPoolsAsync(IOBehavior.Synchronous, CancellationToken.None).GetAwaiter().GetResult();
 
+	// private static readonly UpDownCounter<int> s_pooledConnectionsCounter = ActivitySourceHelper.Meter.CreateUpDownCounter<int>("number-of-pooled-connections",
+	// description: "The number of active connections that are being managed by the connection pooling infrastructure.");
+	private static readonly UpDownCounter<int> s_freeConnectionsCounter = ActivitySourceHelper.Meter.CreateUpDownCounter<int>("number-of-free-connections",
+		description: "The number of open connections available for use in the connection pools.");
+	private static readonly Counter<int> s_softConnectsCounter = ActivitySourceHelper.Meter.CreateCounter<int>("soft-connects", unit: "Connections",
+		description: "The number of connections that have been opened from the connection pool.");
+	private static readonly Counter<int> s_softDisconnectsCounter = ActivitySourceHelper.Meter.CreateCounter<int>("soft-disconnects", unit: "Connections",
+		description: "The number of connections that have been returned to the connection pool.");
+	private static readonly Counter<int> s_reclaimedConnectionsCounter = ActivitySourceHelper.Meter.CreateCounter<int>("number-of-reclaimed-connections",
+		description: "The number of connections that have been reclaimed through garbage collection where Close or Dispose wasn't called by the application.");
 	private static readonly ConcurrentDictionary<string, ConnectionPool?> s_pools = new();
 	private static readonly Action<ILogger, int, string, Exception?> s_createdNewSession = LoggerMessage.Define<int, string>(
 		LogLevel.Debug, new EventId(EventIds.PoolCreatedNewSession, nameof(EventIds.PoolCreatedNewSession)),

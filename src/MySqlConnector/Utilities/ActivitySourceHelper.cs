@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Globalization;
 using System.Reflection;
 
@@ -63,6 +64,8 @@ internal static class ActivitySourceHelper
 				activity.SetTag(tag.Key, tag.Value);
 		}
 	}
+
+	public static Meter Meter { get; } = new("MySqlConnector", "2.3.0");
 
 	private static ActivitySource ActivitySource { get; } = CreateActivitySource();
 
