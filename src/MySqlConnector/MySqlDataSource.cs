@@ -18,12 +18,13 @@ public sealed class MySqlDataSource : DbDataSource
 	/// <param name="connectionString">The connection string for the MySQL Server. This parameter is required.</param>
 	/// <exception cref="ArgumentNullException">Thrown if <paramref name="connectionString"/> is <c>null</c>.</exception>
 	public MySqlDataSource(string connectionString)
-		: this(connectionString ?? throw new ArgumentNullException(nameof(connectionString)), MySqlConnectorLoggingConfiguration.NullConfiguration, null, null, null, default, default)
+		: this(connectionString ?? throw new ArgumentNullException(nameof(connectionString)), MySqlConnectorLoggingConfiguration.NullConfiguration, null, null, null, null, default, default)
 	{
 	}
 
 	internal MySqlDataSource(string connectionString,
 		MySqlConnectorLoggingConfiguration loggingConfiguration,
+		string? name,
 		Func<X509CertificateCollection, ValueTask>? clientCertificatesCallback,
 		RemoteCertificateValidationCallback? remoteCertificateValidationCallback,
 		Func<MySqlProvidePasswordContext, CancellationToken, ValueTask<string>>? periodicPasswordProvider,
@@ -32,16 +33,21 @@ public sealed class MySqlDataSource : DbDataSource
 	{
 		m_connectionString = connectionString;
 		LoggingConfiguration = loggingConfiguration;
+		Name = name;
 		m_clientCertificatesCallback = clientCertificatesCallback;
 		m_remoteCertificateValidationCallback = remoteCertificateValidationCallback;
 		m_logger = loggingConfiguration.DataSourceLogger;
 
-		Pool = ConnectionPool.CreatePool(m_connectionString, LoggingConfiguration);
+		Pool = ConnectionPool.CreatePool(m_connectionString, LoggingConfiguration, name);
 		m_id = Interlocked.Increment(ref s_lastId);
-		if (Pool is not null)
-			Log.DataSourceCreatedWithPool(m_logger, m_id, Pool.Id);
+		if (Pool is not null && Name is not null)
+			Log.DataSourceCreatedWithPoolWithName(m_logger, m_id, Pool.Id, Name);
+		else if (Pool is not null)
+			Log.DataSourceCreatedWithPoolWithoutName(m_logger, m_id, Pool.Id);
+		else if (Name is not null)
+			Log.DataSourceCreatedWithoutPoolWithName(m_logger, m_id, Name);
 		else
-			Log.DataSourceCreatedWithoutPool(m_logger, m_id);
+			Log.DataSourceCreatedWithoutPoolWithoutName(m_logger, m_id);
 
 		if (periodicPasswordProvider is not null)
 		{
@@ -185,6 +191,8 @@ public sealed class MySqlDataSource : DbDataSource
 	internal ConnectionPool? Pool { get; }
 
 	internal MySqlConnectorLoggingConfiguration LoggingConfiguration { get; }
+
+	internal string? Name { get; }
 
 	private string ProvidePasswordFromField(MySqlProvidePasswordContext context) => m_password!;
 

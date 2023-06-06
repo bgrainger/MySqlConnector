@@ -3,8 +3,10 @@ namespace MySqlConnector.Logging;
 internal static class EventIds
 {
 	// DataSource events, 1000-1099
-	public const int DataSourceCreatedWithPool = 1000;
-	public const int DataSourceCreatedWithoutPool = 1001;
+	public const int DataSourceCreatedWithPoolWithName = 1000;
+	public const int DataSourceCreatedWithoutPoolWithName = 1001;
+	public const int DataSourceCreatedWithPoolWithoutName = 1002;
+	public const int DataSourceCreatedWithoutPoolWithoutName = 1003;
 
 	// DataSource errors, 1100-1199
 	public const int PeriodicPasswordProviderFailed = 1100;

@@ -15,6 +15,8 @@ internal sealed class ConnectionPool : IDisposable
 {
 	public int Id { get; }
 
+	public string? Name { get; }
+
 	public ConnectionSettings ConnectionSettings { get; }
 
 	public SslProtocols SslProtocols { get; set; }
@@ -50,13 +52,14 @@ internal sealed class ConnectionPool : IDisposable
 			{
 				if (m_sessions.Count > 0)
 				{
+					// NOTE: s_connectionsUsageCounter updated outside lock below
 					session = m_sessions.First!.Value;
 					m_sessions.RemoveFirst();
-					s_freeConnectionsCounter.Add(-1);
 				}
 			}
 			if (session is not null)
 			{
+				s_connectionsUsageCounter.Add(-1, m_idleStateTagList);
 				Log.FoundExistingSession(m_logger, Id);
 				bool reuseSession;
 
@@ -90,7 +93,7 @@ internal sealed class ConnectionPool : IDisposable
 						m_leasedSessions.Add(session.Id, session);
 						leasedSessionsCountPooled = m_leasedSessions.Count;
 					}
-					s_softConnectsCounter.Add(1);
+					s_connectionsUsageCounter.Add(1, m_usedStateTagList);
 					ActivitySourceHelper.CopyTags(session.ActivityTags, activity);
 					Log.ReturningPooledSession(m_logger, Id, session.Id, leasedSessionsCountPooled);
 					return session;
@@ -107,6 +110,7 @@ internal sealed class ConnectionPool : IDisposable
 				m_leasedSessions.Add(session.Id, session);
 				leasedSessionsCountNew = m_leasedSessions.Count;
 			}
+			s_connectionsUsageCounter.Add(1, m_usedStateTagList);
 			Log.ReturningNewSession(m_logger, Id, session.Id, leasedSessionsCountNew);
 			return session;
 		}
@@ -159,14 +163,14 @@ internal sealed class ConnectionPool : IDisposable
 		{
 			lock (m_leasedSessions)
 				m_leasedSessions.Remove(session.Id);
+			s_connectionsUsageCounter.Add(-1, m_usedStateTagList);
 			session.OwningConnection = null;
 			var sessionHealth = GetSessionHealth(session);
 			if (sessionHealth == 0)
 			{
 				lock (m_sessions)
 					m_sessions.AddFirst(session);
-				s_freeConnectionsCounter.Add(1);
-				s_softDisconnectsCounter.Add(1);
+				s_connectionsUsageCounter.Add(1, m_idleStateTagList);
 			}
 			else
 			{
@@ -274,7 +278,6 @@ internal sealed class ConnectionPool : IDisposable
 			// bypass MySqlConnection.Dispose(Async), because it's a dummy MySqlConnection that's not set up
 			// properly, and simply return the session to the pool directly
 			await session.ReturnToPoolAsync(ioBehavior, null).ConfigureAwait(false);
-			s_reclaimedConnectionsCounter.Add(1);
 
 			// be explicit about keeping the associated MySqlConnection alive until the session has been returned
 			GC.KeepAlive(connection);
@@ -324,13 +327,14 @@ internal sealed class ConnectionPool : IDisposable
 					{
 						if (m_sessions.Count > 0)
 						{
+							// NOTE: s_connectionsUsageCounter updated outside lock below
 							session = m_sessions.Last!.Value;
 							m_sessions.RemoveLast();
-							s_freeConnectionsCounter.Add(-1);
 						}
 					}
 					if (session is null)
 						return;
+					s_connectionsUsageCounter.Add(-1, m_idleStateTagList);
 
 					if (shouldCleanFn(session))
 					{
@@ -343,7 +347,7 @@ internal sealed class ConnectionPool : IDisposable
 						// session should not be cleaned; put it back in the queue and stop iterating
 						lock (m_sessions)
 							m_sessions.AddLast(session);
-						s_freeConnectionsCounter.Add(1);
+						s_connectionsUsageCounter.Add(1, m_idleStateTagList);
 						return;
 					}
 				}
@@ -389,7 +393,7 @@ internal sealed class ConnectionPool : IDisposable
 				AdjustHostConnectionCount(session, 1);
 				lock (m_sessions)
 					m_sessions.AddFirst(session);
-				s_freeConnectionsCounter.Add(1);
+				s_connectionsUsageCounter.Add(1, m_idleStateTagList);
 			}
 			finally
 			{
@@ -474,7 +478,7 @@ internal sealed class ConnectionPool : IDisposable
 		return session;
 	}
 
-	public static ConnectionPool? CreatePool(string connectionString, MySqlConnectorLoggingConfiguration loggingConfiguration)
+	public static ConnectionPool? CreatePool(string connectionString, MySqlConnectorLoggingConfiguration loggingConfiguration, string? name)
 	{
 		// parse connection string and check for 'Pooling' setting; return 'null' if pooling is disabled
 		var connectionStringBuilder = new MySqlConnectionStringBuilder(connectionString);
@@ -483,13 +487,13 @@ internal sealed class ConnectionPool : IDisposable
 
 		// force a new pool to be created, ignoring the cache
 		var connectionSettings = new ConnectionSettings(connectionStringBuilder);
-		var pool = new ConnectionPool(loggingConfiguration, connectionSettings);
+		var pool = new ConnectionPool(loggingConfiguration, connectionSettings, name);
 		pool.StartReaperTask();
 		pool.StartDnsCheckTimer();
 		return pool;
 	}
 
-	// Gets an existing ConnectionPool, creating it if it's missing. If 'createIfNotFound' is false, then 'loggingConfiguration'
+	// Gets an existing (unnamed) ConnectionPool, creating it if it's missing. If 'createIfNotFound' is false, then 'loggingConfiguration'
 	// may be set to null; otherwise, it must be provided.
 	public static ConnectionPool? GetPool(string connectionString, MySqlConnectorLoggingConfiguration? loggingConfiguration, bool createIfNotFound = true)
 	{
@@ -531,7 +535,7 @@ internal sealed class ConnectionPool : IDisposable
 
 		// create a new pool and attempt to insert it; if someone else beats us to it, just use their value
 		var connectionSettings = new ConnectionSettings(connectionStringBuilder);
-		var newPool = new ConnectionPool(loggingConfiguration!, connectionSettings);
+		var newPool = new ConnectionPool(loggingConfiguration!, connectionSettings, name: null);
 		pool = s_pools.GetOrAdd(normalizedConnectionString, newPool);
 
 		if (pool == newPool)
@@ -570,11 +574,12 @@ internal sealed class ConnectionPool : IDisposable
 		return pools;
 	}
 
-	private ConnectionPool(MySqlConnectorLoggingConfiguration loggingConfiguration, ConnectionSettings cs)
+	private ConnectionPool(MySqlConnectorLoggingConfiguration loggingConfiguration, ConnectionSettings cs, string? name)
 	{
 		m_logger = loggingConfiguration.PoolLogger;
 		m_connectionLogger = loggingConfiguration.ConnectionLogger;
 		ConnectionSettings = cs;
+		Name = name;
 		SslProtocols = cs.TlsVersions;
 		m_generation = 0;
 		m_cleanSemaphore = new(1);
@@ -594,8 +599,19 @@ internal sealed class ConnectionPool : IDisposable
 			cs.LoadBalance == MySqlLoadBalance.LeastConnections ? new LeastConnectionsLoadBalancer(m_hostSessions!) :
 			(ILoadBalancer) new RoundRobinLoadBalancer();
 
+		// create tag lists for reporting pool metrics
+		var connectionString = cs.ConnectionStringBuilder.GetConnectionString(includePassword: false);
+		var tags = new KeyValuePair<string, object?>[3]
+		{
+			new("state", "idle"),
+			new("pool.name", Name ?? connectionString),
+			new("state", "used"),
+		};
+		m_idleStateTagList = new TagList(tags.AsSpan(0, 2));
+		m_usedStateTagList = new TagList(tags.AsSpan(1, 2));
+
 		Id = Interlocked.Increment(ref s_poolId);
-		Log.CreatingNewConnectionPool(m_logger, Id, cs.ConnectionStringBuilder.GetConnectionString(includePassword: false));
+		Log.CreatingNewConnectionPool(m_logger, Id, connectionString);
 	}
 
 	private void StartReaperTask()
@@ -775,16 +791,8 @@ internal sealed class ConnectionPool : IDisposable
 	private static void OnAppDomainShutDown(object? sender, EventArgs e) =>
 		ClearPoolsAsync(IOBehavior.Synchronous, CancellationToken.None).GetAwaiter().GetResult();
 
-	// private static readonly UpDownCounter<int> s_pooledConnectionsCounter = ActivitySourceHelper.Meter.CreateUpDownCounter<int>("number-of-pooled-connections",
-	// description: "The number of active connections that are being managed by the connection pooling infrastructure.");
-	private static readonly UpDownCounter<int> s_freeConnectionsCounter = ActivitySourceHelper.Meter.CreateUpDownCounter<int>("number-of-free-connections",
+	private static readonly UpDownCounter<int> s_connectionsUsageCounter = ActivitySourceHelper.Meter.CreateUpDownCounter<int>("db.client.connections.usage",
 		description: "The number of open connections available for use in the connection pools.");
-	private static readonly Counter<int> s_softConnectsCounter = ActivitySourceHelper.Meter.CreateCounter<int>("soft-connects", unit: "Connections",
-		description: "The number of connections that have been opened from the connection pool.");
-	private static readonly Counter<int> s_softDisconnectsCounter = ActivitySourceHelper.Meter.CreateCounter<int>("soft-disconnects", unit: "Connections",
-		description: "The number of connections that have been returned to the connection pool.");
-	private static readonly Counter<int> s_reclaimedConnectionsCounter = ActivitySourceHelper.Meter.CreateCounter<int>("number-of-reclaimed-connections",
-		description: "The number of connections that have been reclaimed through garbage collection where Close or Dispose wasn't called by the application.");
 	private static readonly ConcurrentDictionary<string, ConnectionPool?> s_pools = new();
 	private static readonly Action<ILogger, int, string, Exception?> s_createdNewSession = LoggerMessage.Define<int, string>(
 		LogLevel.Debug, new EventId(EventIds.PoolCreatedNewSession, nameof(EventIds.PoolCreatedNewSession)),
@@ -797,6 +805,8 @@ internal sealed class ConnectionPool : IDisposable
 
 	private readonly ILogger m_logger;
 	private readonly ILogger m_connectionLogger;
+	private readonly TagList m_idleStateTagList;
+	private readonly TagList m_usedStateTagList;
 	private readonly SemaphoreSlim m_cleanSemaphore;
 	private readonly SemaphoreSlim m_sessionSemaphore;
 	private readonly LinkedList<ServerSession> m_sessions;

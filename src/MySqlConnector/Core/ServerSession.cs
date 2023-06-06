@@ -378,10 +378,6 @@ internal sealed partial class ServerSession
 				catch (SocketException)
 				{
 				}
-
-				// m_payloadHandler is only set if the initial connection was made (incrementing s_hardConnectsCounter), so it's safe
-				// to increment this here, even if state is Failed
-				s_hardDisconnectsCounter.Add(1);
 			}
 		}
 
@@ -453,7 +449,6 @@ internal sealed partial class ServerSession
 					throw new MySqlException(MySqlErrorCode.UnableToConnectToHost, "Unable to connect to any of the specified MySQL hosts.");
 				}
 
-				s_hardConnectsCounter.Add(1);
 				var byteHandler = m_socket is null ? new StreamByteHandler(m_stream!) : (IByteHandler) new SocketByteHandler(m_socket);
 				if (cs.ConnectionTimeout != 0)
 					byteHandler.RemainingTimeout = Math.Max(1, cs.ConnectionTimeoutMilliseconds - unchecked(Environment.TickCount - startTickCount));
@@ -1958,11 +1953,6 @@ internal sealed partial class ServerSession
 
 	[LoggerMessage(EventIds.ExpectedSessionState6, LogLevel.Error, "Session {SessionId} should have state {ExpectedState1} or {ExpectedState2} or {ExpectedState3} or {ExpectedState4} or {ExpectedState5} or {ExpectedState6} but was {SessionState}")]
 	private static partial void ExpectedSessionState6(ILogger logger, string sessionId, State expectedState1, State expectedState2, State expectedState3, State expectedState4, State expectedState5, State expectedState6, State sessionState);
-
-	private static readonly Counter<int> s_hardConnectsCounter = ActivitySourceHelper.Meter.CreateCounter<int>("hard-connects", unit: "Connections",
-		description: "The number of connections that have been opened to database servers.");
-	private static readonly Counter<int> s_hardDisconnectsCounter = ActivitySourceHelper.Meter.CreateCounter<int>("hard-disconnects", unit: "Connections",
-		description: "The number of connections to database servers that have been closed.");
 
 	private static ReadOnlySpan<byte> BeginCertificateBytes => "-----BEGIN CERTIFICATE-----"u8;
 	private static readonly PayloadData s_setNamesUtf8NoAttributesPayload = QueryPayload.Create(false, "SET NAMES utf8;"u8);

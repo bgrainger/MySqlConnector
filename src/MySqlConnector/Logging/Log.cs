@@ -7,11 +7,17 @@ namespace MySqlConnector.Logging;
 
 internal static partial class Log
 {
-	[LoggerMessage(EventIds.DataSourceCreatedWithPool, LogLevel.Information, "Data source {DataSourceId} created with pool {PoolId}")]
-	public static partial void DataSourceCreatedWithPool(ILogger logger, int dataSourceId, int poolId);
+	[LoggerMessage(EventIds.DataSourceCreatedWithPoolWithName, LogLevel.Information, "Data source {DataSourceId} created with pool {PoolId} and name {DataSourceName}")]
+	public static partial void DataSourceCreatedWithPoolWithName(ILogger logger, int dataSourceId, int poolId, string dataSourceName);
 
-	[LoggerMessage(EventIds.DataSourceCreatedWithoutPool, LogLevel.Information, "Data source {DataSourceId} created with no pool")]
-	public static partial void DataSourceCreatedWithoutPool(ILogger logger, int dataSourceId);
+	[LoggerMessage(EventIds.DataSourceCreatedWithoutPoolWithName, LogLevel.Information, "Data source {DataSourceId} created with name {DataSourceName} and no pool")]
+	public static partial void DataSourceCreatedWithoutPoolWithName(ILogger logger, int dataSourceId, string dataSourceName);
+
+	[LoggerMessage(EventIds.DataSourceCreatedWithPoolWithoutName, LogLevel.Information, "Data source {DataSourceId} created with pool {PoolId} and no name")]
+	public static partial void DataSourceCreatedWithPoolWithoutName(ILogger logger, int dataSourceId, int poolId);
+
+	[LoggerMessage(EventIds.DataSourceCreatedWithoutPoolWithoutName, LogLevel.Information, "Data source {DataSourceId} created with no pool and no name")]
+	public static partial void DataSourceCreatedWithoutPoolWithoutName(ILogger logger, int dataSourceId);
 
 	[LoggerMessage(EventIds.PeriodicPasswordProviderFailed, LogLevel.Error, "Periodic password provider for data source {DataSourceId} failed: {ExceptionMessage}")]
 	public static partial void PeriodicPasswordProviderFailed(ILogger logger, Exception exception, int dataSourceId, string exceptionMessage);
