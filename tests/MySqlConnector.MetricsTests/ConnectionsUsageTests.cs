@@ -91,6 +91,45 @@ public class ConnectionsUsageTests : IDisposable
 	}
 
 	[Fact]
+	public void NamedDataSourceWithMinPoolSize()
+	{
+		var csb = new MySqlConnectionStringBuilder
+		{
+			Server = "localhost",
+			Port = (uint) m_server.Port,
+			UserID = "test",
+			Password = "test",
+			MinimumPoolSize = 3,
+		};
+
+		m_poolName = "minimum-pool-size";
+		using var dataSource = new MySqlDataSourceBuilder(csb.ConnectionString)
+			.UseName(m_poolName)
+			.Build();
+
+		// minimum pool size is created lazily when the first connection is opened
+		AssertMeasurement("db.client.connections.usage", 0);
+		AssertMeasurement("db.client.connections.usage|idle", 0);
+		AssertMeasurement("db.client.connections.usage|used", 0);
+		Assert.Equal(0, m_server.ActiveConnections);
+
+		// opening a connection creates the minimum connections then takes an idle one from the pool
+		using (var connection = dataSource.OpenConnection())
+		{
+			AssertMeasurement("db.client.connections.usage", 3);
+			AssertMeasurement("db.client.connections.usage|idle", 2);
+			AssertMeasurement("db.client.connections.usage|used", 1);
+			Assert.Equal(3, m_server.ActiveConnections);
+		}
+
+		// closing puts it back to idle
+		AssertMeasurement("db.client.connections.usage", 3);
+		AssertMeasurement("db.client.connections.usage|idle", 3);
+		AssertMeasurement("db.client.connections.usage|used", 0);
+		Assert.Equal(3, m_server.ActiveConnections);
+	}
+
+	[Fact]
 	public void UnnamedDataSource()
 	{
 		var csb = new MySqlConnectionStringBuilder
