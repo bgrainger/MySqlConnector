@@ -243,6 +243,10 @@ internal sealed class ConnectionPool : IDisposable
 			reaperWaitHandle.WaitOne();
 		}
 #endif
+
+		s_minIdleConnectionsCounter.Add(-ConnectionSettings.MinimumPoolSize, PoolNameTagList);
+		s_maxIdleConnectionsCounter.Add(-ConnectionSettings.MaximumPoolSize, PoolNameTagList);
+		s_maxConnectionsCounter.Add(-ConnectionSettings.MaximumPoolSize, PoolNameTagList);
 	}
 
 	/// <summary>
@@ -607,6 +611,11 @@ internal sealed class ConnectionPool : IDisposable
 			new("state", "used"),
 		};
 
+		// set pool size counters
+		s_minIdleConnectionsCounter.Add(ConnectionSettings.MinimumPoolSize, PoolNameTagList);
+		s_maxIdleConnectionsCounter.Add(ConnectionSettings.MaximumPoolSize, PoolNameTagList);
+		s_maxConnectionsCounter.Add(ConnectionSettings.MaximumPoolSize, PoolNameTagList);
+
 		Id = Interlocked.Increment(ref s_poolId);
 		Log.CreatingNewConnectionPool(m_logger, Id, connectionString);
 	}
@@ -758,6 +767,9 @@ internal sealed class ConnectionPool : IDisposable
 	private ReadOnlySpan<KeyValuePair<string, object?>> IdleStateTagList => m_stateTagList.AsSpan(0, 2);
 	private ReadOnlySpan<KeyValuePair<string, object?>> UsedStateTagList => m_stateTagList.AsSpan(1, 2);
 
+	// A slice of m_stateTagList that contains only the pool name tag.
+	private ReadOnlySpan<KeyValuePair<string, object?>> PoolNameTagList => m_stateTagList.AsSpan(1, 1);
+
 	private sealed class LeastConnectionsLoadBalancer : ILoadBalancer
 	{
 		public LeastConnectionsLoadBalancer(Dictionary<string, int> hostSessions) => m_hostSessions = hostSessions;
@@ -795,6 +807,15 @@ internal sealed class ConnectionPool : IDisposable
 	private static readonly UpDownCounter<int> s_connectionsUsageCounter = ActivitySourceHelper.Meter.CreateUpDownCounter<int>("db.client.connections.usage",
 		unit: "connections",
 		description: "The number of connections that are currently in the state described by the state tag.");
+	private static readonly UpDownCounter<int> s_maxIdleConnectionsCounter = ActivitySourceHelper.Meter.CreateUpDownCounter<int>("db.client.connections.idle.max",
+		unit: "connections",
+		description: "The maximum number of idle open connections allowed.");
+	private static readonly UpDownCounter<int> s_minIdleConnectionsCounter = ActivitySourceHelper.Meter.CreateUpDownCounter<int>("db.client.connections.idle.min",
+		unit: "connections",
+		description: "The minimum number of idle open connections allowed.");
+	private static readonly UpDownCounter<int> s_maxConnectionsCounter = ActivitySourceHelper.Meter.CreateUpDownCounter<int>("db.client.connections.max",
+		unit: "connections",
+		description: "The maximum number of open connections allowed.");
 	private static readonly ConcurrentDictionary<string, ConnectionPool?> s_pools = new();
 	private static readonly Action<ILogger, int, string, Exception?> s_createdNewSession = LoggerMessage.Define<int, string>(
 		LogLevel.Debug, new EventId(EventIds.PoolCreatedNewSession, nameof(EventIds.PoolCreatedNewSession)),
