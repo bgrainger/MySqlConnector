@@ -48,6 +48,7 @@
   <ItemGroup Condition=" '$(Configuration)' == 'MySqlData' ">
     <PackageReference Include="MySql.Data" Version="8.0.33" />
     <Compile Remove="ByteBufferWriterTests.cs;CachedProcedureTests.cs;CancellationTests.cs;ConnectionTests.cs;FakeMySqlServer.cs;FakeMySqlServerConnection.cs;LoadBalancerTests.cs;MySqlDecimalTests.cs;MySqlExceptionTests.cs;MySqlParameterCollectionNameToIndexTests.cs;NormalizeTests.cs;ServerVersionTests.cs;StatementPreparerTests.cs;TypeMapperTests.cs;UtilityTests.cs" />
+    <Compile Remove="Metrics\*.cs" />
     <Using Include="MySql.Data.MySqlClient" />
     <Using Include="MySql.Data.Types" />
   </ItemGroup>

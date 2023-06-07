@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Net;
 using System.Security.Authentication;
 using Microsoft.Extensions.Logging;
@@ -50,12 +51,14 @@ internal sealed class ConnectionPool : IDisposable
 			{
 				if (m_sessions.Count > 0)
 				{
+					// NOTE: s_connectionsUsageCounter updated outside lock below
 					session = m_sessions.First!.Value;
 					m_sessions.RemoveFirst();
 				}
 			}
 			if (session is not null)
 			{
+				s_connectionsUsageCounter.Add(-1, IdleStateTagList);
 				Log.FoundExistingSession(m_logger, Id);
 				bool reuseSession;
 
@@ -89,6 +92,7 @@ internal sealed class ConnectionPool : IDisposable
 						m_leasedSessions.Add(session.Id, session);
 						leasedSessionsCountPooled = m_leasedSessions.Count;
 					}
+					s_connectionsUsageCounter.Add(1, UsedStateTagList);
 					ActivitySourceHelper.CopyTags(session.ActivityTags, activity);
 					Log.ReturningPooledSession(m_logger, Id, session.Id, leasedSessionsCountPooled);
 					return session;
@@ -105,6 +109,7 @@ internal sealed class ConnectionPool : IDisposable
 				m_leasedSessions.Add(session.Id, session);
 				leasedSessionsCountNew = m_leasedSessions.Count;
 			}
+			s_connectionsUsageCounter.Add(1, UsedStateTagList);
 			Log.ReturningNewSession(m_logger, Id, session.Id, leasedSessionsCountNew);
 			return session;
 		}
@@ -157,12 +162,14 @@ internal sealed class ConnectionPool : IDisposable
 		{
 			lock (m_leasedSessions)
 				m_leasedSessions.Remove(session.Id);
+			s_connectionsUsageCounter.Add(-1, UsedStateTagList);
 			session.OwningConnection = null;
 			var sessionHealth = GetSessionHealth(session);
 			if (sessionHealth == 0)
 			{
 				lock (m_sessions)
 					m_sessions.AddFirst(session);
+				s_connectionsUsageCounter.Add(1, IdleStateTagList);
 			}
 			else
 			{
@@ -319,12 +326,14 @@ internal sealed class ConnectionPool : IDisposable
 					{
 						if (m_sessions.Count > 0)
 						{
+							// NOTE: s_connectionsUsageCounter updated outside lock below
 							session = m_sessions.Last!.Value;
 							m_sessions.RemoveLast();
 						}
 					}
 					if (session is null)
 						return;
+					s_connectionsUsageCounter.Add(-1, IdleStateTagList);
 
 					if (shouldCleanFn(session))
 					{
@@ -337,6 +346,7 @@ internal sealed class ConnectionPool : IDisposable
 						// session should not be cleaned; put it back in the queue and stop iterating
 						lock (m_sessions)
 							m_sessions.AddLast(session);
+						s_connectionsUsageCounter.Add(1, IdleStateTagList);
 						return;
 					}
 				}
@@ -382,6 +392,7 @@ internal sealed class ConnectionPool : IDisposable
 				AdjustHostConnectionCount(session, 1);
 				lock (m_sessions)
 					m_sessions.AddFirst(session);
+				s_connectionsUsageCounter.Add(1, IdleStateTagList);
 			}
 			finally
 			{
@@ -587,8 +598,17 @@ internal sealed class ConnectionPool : IDisposable
 			cs.LoadBalance == MySqlLoadBalance.LeastConnections ? new LeastConnectionsLoadBalancer(m_hostSessions!) :
 			(ILoadBalancer) new RoundRobinLoadBalancer();
 
+		// create tag lists for reporting pool metrics
+		var connectionString = cs.ConnectionStringBuilder.GetConnectionString(includePassword: false);
+		m_stateTagList = new KeyValuePair<string, object?>[3]
+		{
+			new("state", "idle"),
+			new("pool.name", Name ?? connectionString),
+			new("state", "used"),
+		};
+
 		Id = Interlocked.Increment(ref s_poolId);
-		Log.CreatingNewConnectionPool(m_logger, Id, cs.ConnectionStringBuilder.GetConnectionString(includePassword: false));
+		Log.CreatingNewConnectionPool(m_logger, Id, connectionString);
 	}
 
 	private void StartReaperTask()
@@ -734,6 +754,10 @@ internal sealed class ConnectionPool : IDisposable
 		}
 	}
 
+	// Provides a slice of m_stateTagList that contains either the 'idle' or 'used' state tag along with the pool name.
+	private ReadOnlySpan<KeyValuePair<string, object?>> IdleStateTagList => m_stateTagList.AsSpan(0, 2);
+	private ReadOnlySpan<KeyValuePair<string, object?>> UsedStateTagList => m_stateTagList.AsSpan(1, 2);
+
 	private sealed class LeastConnectionsLoadBalancer : ILoadBalancer
 	{
 		public LeastConnectionsLoadBalancer(Dictionary<string, int> hostSessions) => m_hostSessions = hostSessions;
@@ -768,6 +792,9 @@ internal sealed class ConnectionPool : IDisposable
 	private static void OnAppDomainShutDown(object? sender, EventArgs e) =>
 		ClearPoolsAsync(IOBehavior.Synchronous, CancellationToken.None).GetAwaiter().GetResult();
 
+	private static readonly UpDownCounter<int> s_connectionsUsageCounter = ActivitySourceHelper.Meter.CreateUpDownCounter<int>("db.client.connections.usage",
+		unit: "connections",
+		description: "The number of connections that are currently in the state described by the state tag.");
 	private static readonly ConcurrentDictionary<string, ConnectionPool?> s_pools = new();
 	private static readonly Action<ILogger, int, string, Exception?> s_createdNewSession = LoggerMessage.Define<int, string>(
 		LogLevel.Debug, new EventId(EventIds.PoolCreatedNewSession, nameof(EventIds.PoolCreatedNewSession)),
@@ -780,6 +807,7 @@ internal sealed class ConnectionPool : IDisposable
 
 	private readonly ILogger m_logger;
 	private readonly ILogger m_connectionLogger;
+	private readonly KeyValuePair<string, object?>[] m_stateTagList;
 	private readonly SemaphoreSlim m_cleanSemaphore;
 	private readonly SemaphoreSlim m_sessionSemaphore;
 	private readonly LinkedList<ServerSession> m_sessions;
