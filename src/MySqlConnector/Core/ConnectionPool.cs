@@ -95,6 +95,9 @@ internal sealed class ConnectionPool : IDisposable
 					s_connectionsUsageCounter.Add(1, UsedStateTagList);
 					ActivitySourceHelper.CopyTags(session.ActivityTags, activity);
 					Log.ReturningPooledSession(m_logger, Id, session.Id, leasedSessionsCountPooled);
+
+					session.LastLeasedTicks = unchecked((uint) Environment.TickCount);
+					s_waitTimeHistory.Record(unchecked(session.LastLeasedTicks - (uint) startTickCount), PoolNameTagList);
 					return session;
 				}
 			}
@@ -111,6 +114,9 @@ internal sealed class ConnectionPool : IDisposable
 			}
 			s_connectionsUsageCounter.Add(1, UsedStateTagList);
 			Log.ReturningNewSession(m_logger, Id, session.Id, leasedSessionsCountNew);
+
+			session.LastLeasedTicks = unchecked((uint) Environment.TickCount);
+			s_createTimeHistory.Record(unchecked(session.LastLeasedTicks - (uint) startTickCount), PoolNameTagList);
 			return session;
 		}
 		catch (Exception ex)
@@ -768,7 +774,7 @@ internal sealed class ConnectionPool : IDisposable
 	private ReadOnlySpan<KeyValuePair<string, object?>> UsedStateTagList => m_stateTagList.AsSpan(1, 2);
 
 	// A slice of m_stateTagList that contains only the pool name tag.
-	private ReadOnlySpan<KeyValuePair<string, object?>> PoolNameTagList => m_stateTagList.AsSpan(1, 1);
+	public ReadOnlySpan<KeyValuePair<string, object?>> PoolNameTagList => m_stateTagList.AsSpan(1, 1);
 
 	private sealed class LeastConnectionsLoadBalancer : ILoadBalancer
 	{
@@ -816,6 +822,10 @@ internal sealed class ConnectionPool : IDisposable
 	private static readonly UpDownCounter<int> s_maxConnectionsCounter = ActivitySourceHelper.Meter.CreateUpDownCounter<int>("db.client.connections.max",
 		unit: "connections",
 		description: "The maximum number of open connections allowed.");
+	private static readonly Histogram<float> s_createTimeHistory = ActivitySourceHelper.Meter.CreateHistogram<float>("db.client.connections.create_time",
+		unit: "milliseconds", description: "The time it took to create a new connection.");
+	private static readonly Histogram<float> s_waitTimeHistory = ActivitySourceHelper.Meter.CreateHistogram<float>("db.client.connections.wait_time",
+		unit: "milliseconds", description: "The time it took to obtain an open connection from the pool.");
 	private static readonly ConcurrentDictionary<string, ConnectionPool?> s_pools = new();
 	private static readonly Action<ILogger, int, string, Exception?> s_createdNewSession = LoggerMessage.Define<int, string>(
 		LogLevel.Debug, new EventId(EventIds.PoolCreatedNewSession, nameof(EventIds.PoolCreatedNewSession)),

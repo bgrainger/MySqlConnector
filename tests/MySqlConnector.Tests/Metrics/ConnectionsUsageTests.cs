@@ -16,7 +16,7 @@ public class ConnectionsUsageTests : MetricsTestsBase
 		AssertMeasurement("db.client.connections.usage", 0);
 		AssertMeasurement("db.client.connections.usage|idle", 0);
 		AssertMeasurement("db.client.connections.usage|used", 0);
-		Assert.Equal(0, ServerActiveConnections);
+		Assert.Equal(0, Server.ActiveConnections);
 
 		// opening a connection creates a 'used' connection
 		using (var connection = dataSource.OpenConnection())
@@ -24,14 +24,14 @@ public class ConnectionsUsageTests : MetricsTestsBase
 			AssertMeasurement("db.client.connections.usage", 1);
 			AssertMeasurement("db.client.connections.usage|idle", 0);
 			AssertMeasurement("db.client.connections.usage|used", 1);
-			Assert.Equal(1, ServerActiveConnections);
+			Assert.Equal(1, Server.ActiveConnections);
 		}
 
 		// closing it creates an 'idle' connection
 		AssertMeasurement("db.client.connections.usage", 1);
 		AssertMeasurement("db.client.connections.usage|idle", 1);
 		AssertMeasurement("db.client.connections.usage|used", 0);
-		Assert.Equal(1, ServerActiveConnections);
+		Assert.Equal(1, Server.ActiveConnections);
 
 		// reopening the connection transitions it back to 'used'
 		using (var connection = dataSource.OpenConnection())
@@ -40,7 +40,7 @@ public class ConnectionsUsageTests : MetricsTestsBase
 			AssertMeasurement("db.client.connections.usage|idle", 0);
 			AssertMeasurement("db.client.connections.usage|used", 1);
 		}
-		Assert.Equal(1, ServerActiveConnections);
+		Assert.Equal(1, Server.ActiveConnections);
 
 		// opening a second connection creates a net new 'used' connection
 		using (var connection = dataSource.OpenConnection())
@@ -49,13 +49,13 @@ public class ConnectionsUsageTests : MetricsTestsBase
 			AssertMeasurement("db.client.connections.usage", 2);
 			AssertMeasurement("db.client.connections.usage|idle", 0);
 			AssertMeasurement("db.client.connections.usage|used", 2);
-			Assert.Equal(2, ServerActiveConnections);
+			Assert.Equal(2, Server.ActiveConnections);
 		}
 
 		AssertMeasurement("db.client.connections.usage", 2);
 		AssertMeasurement("db.client.connections.usage|idle", 2);
 		AssertMeasurement("db.client.connections.usage|used", 0);
-		Assert.Equal(2, ServerActiveConnections);
+		Assert.Equal(2, Server.ActiveConnections);
 	}
 
 	[Fact]
@@ -73,7 +73,7 @@ public class ConnectionsUsageTests : MetricsTestsBase
 		AssertMeasurement("db.client.connections.usage", 0);
 		AssertMeasurement("db.client.connections.usage|idle", 0);
 		AssertMeasurement("db.client.connections.usage|used", 0);
-		Assert.Equal(0, ServerActiveConnections);
+		Assert.Equal(0, Server.ActiveConnections);
 
 		// opening a connection creates the minimum connections then takes an idle one from the pool
 		using (var connection = dataSource.OpenConnection())
@@ -81,14 +81,14 @@ public class ConnectionsUsageTests : MetricsTestsBase
 			AssertMeasurement("db.client.connections.usage", 3);
 			AssertMeasurement("db.client.connections.usage|idle", 2);
 			AssertMeasurement("db.client.connections.usage|used", 1);
-			Assert.Equal(3, ServerActiveConnections);
+			Assert.Equal(3, Server.ActiveConnections);
 		}
 
 		// closing puts it back to idle
 		AssertMeasurement("db.client.connections.usage", 3);
 		AssertMeasurement("db.client.connections.usage|idle", 3);
 		AssertMeasurement("db.client.connections.usage|used", 0);
-		Assert.Equal(3, ServerActiveConnections);
+		Assert.Equal(3, Server.ActiveConnections);
 	}
 
 	[Fact]
@@ -106,7 +106,7 @@ public class ConnectionsUsageTests : MetricsTestsBase
 		AssertMeasurement("db.client.connections.usage", 0);
 		AssertMeasurement("db.client.connections.usage|idle", 0);
 		AssertMeasurement("db.client.connections.usage|used", 0);
-		Assert.Equal(0, ServerActiveConnections);
+		Assert.Equal(0, Server.ActiveConnections);
 
 		// opening a connection creates a 'used' connection
 		using (var connection = dataSource.OpenConnection())
@@ -114,14 +114,14 @@ public class ConnectionsUsageTests : MetricsTestsBase
 			AssertMeasurement("db.client.connections.usage", 1);
 			AssertMeasurement("db.client.connections.usage|idle", 0);
 			AssertMeasurement("db.client.connections.usage|used", 1);
-			Assert.Equal(1, ServerActiveConnections);
+			Assert.Equal(1, Server.ActiveConnections);
 		}
 
 		// closing it creates an 'idle' connection
 		AssertMeasurement("db.client.connections.usage", 1);
 		AssertMeasurement("db.client.connections.usage|idle", 1);
 		AssertMeasurement("db.client.connections.usage|used", 0);
-		Assert.Equal(1, ServerActiveConnections);
+		Assert.Equal(1, Server.ActiveConnections);
 
 		// reopening the connection transitions it back to 'used'
 		using (var connection = dataSource.OpenConnection())
@@ -130,7 +130,7 @@ public class ConnectionsUsageTests : MetricsTestsBase
 			AssertMeasurement("db.client.connections.usage|idle", 0);
 			AssertMeasurement("db.client.connections.usage|used", 1);
 		}
-		Assert.Equal(1, ServerActiveConnections);
+		Assert.Equal(1, Server.ActiveConnections);
 
 		// opening a second connection creates a net new 'used' connection
 		using (var connection = dataSource.OpenConnection())
@@ -139,13 +139,13 @@ public class ConnectionsUsageTests : MetricsTestsBase
 			AssertMeasurement("db.client.connections.usage", 2);
 			AssertMeasurement("db.client.connections.usage|idle", 0);
 			AssertMeasurement("db.client.connections.usage|used", 2);
-			Assert.Equal(2, ServerActiveConnections);
+			Assert.Equal(2, Server.ActiveConnections);
 		}
 
 		AssertMeasurement("db.client.connections.usage", 2);
 		AssertMeasurement("db.client.connections.usage|idle", 2);
 		AssertMeasurement("db.client.connections.usage|used", 0);
-		Assert.Equal(2, ServerActiveConnections);
+		Assert.Equal(2, Server.ActiveConnections);
 	}
 
 	[Fact]
@@ -160,7 +160,7 @@ public class ConnectionsUsageTests : MetricsTestsBase
 		AssertMeasurement("db.client.connections.usage", 0);
 		AssertMeasurement("db.client.connections.usage|idle", 0);
 		AssertMeasurement("db.client.connections.usage|used", 0);
-		Assert.Equal(0, ServerActiveConnections);
+		Assert.Equal(0, Server.ActiveConnections);
 
 		// opening a connection creates a 'used' connection
 		using (var connection = new MySqlConnection(csb.ConnectionString))
@@ -169,14 +169,14 @@ public class ConnectionsUsageTests : MetricsTestsBase
 			AssertMeasurement("db.client.connections.usage", 1);
 			AssertMeasurement("db.client.connections.usage|idle", 0);
 			AssertMeasurement("db.client.connections.usage|used", 1);
-			Assert.Equal(1, ServerActiveConnections);
+			Assert.Equal(1, Server.ActiveConnections);
 		}
 
 		// closing it creates an 'idle' connection
 		AssertMeasurement("db.client.connections.usage", 1);
 		AssertMeasurement("db.client.connections.usage|idle", 1);
 		AssertMeasurement("db.client.connections.usage|used", 0);
-		Assert.Equal(1, ServerActiveConnections);
+		Assert.Equal(1, Server.ActiveConnections);
 
 		// reopening the connection transitions it back to 'used'
 		using (var connection = new MySqlConnection(csb.ConnectionString))
@@ -186,7 +186,7 @@ public class ConnectionsUsageTests : MetricsTestsBase
 			AssertMeasurement("db.client.connections.usage|idle", 0);
 			AssertMeasurement("db.client.connections.usage|used", 1);
 		}
-		Assert.Equal(1, ServerActiveConnections);
+		Assert.Equal(1, Server.ActiveConnections);
 
 		// opening a second connection creates a net new 'used' connection
 		using (var connection = new MySqlConnection(csb.ConnectionString))
@@ -197,12 +197,12 @@ public class ConnectionsUsageTests : MetricsTestsBase
 			AssertMeasurement("db.client.connections.usage", 2);
 			AssertMeasurement("db.client.connections.usage|idle", 0);
 			AssertMeasurement("db.client.connections.usage|used", 2);
-			Assert.Equal(2, ServerActiveConnections);
+			Assert.Equal(2, Server.ActiveConnections);
 		}
 
 		AssertMeasurement("db.client.connections.usage", 2);
 		AssertMeasurement("db.client.connections.usage|idle", 2);
 		AssertMeasurement("db.client.connections.usage|used", 0);
-		Assert.Equal(2, ServerActiveConnections);
+		Assert.Equal(2, Server.ActiveConnections);
 	}
 }

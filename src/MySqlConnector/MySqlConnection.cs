@@ -390,6 +390,8 @@ public sealed class MySqlConnection : DbConnection, ICloneable
 
 	internal async Task OpenAsync(IOBehavior? ioBehavior, CancellationToken cancellationToken)
 	{
+		var openStartTickCount = Environment.TickCount;
+
 		VerifyNotDisposed();
 		cancellationToken.ThrowIfCancellationRequested();
 		if (State != ConnectionState.Closed)
@@ -398,8 +400,6 @@ public sealed class MySqlConnection : DbConnection, ICloneable
 		using var activity = ActivitySourceHelper.StartActivity(ActivitySourceHelper.OpenActivityName);
 		try
 		{
-			var openStartTickCount = Environment.TickCount;
-
 			SetState(ConnectionState.Connecting);
 
 			var pool = m_dataSource?.Pool ??

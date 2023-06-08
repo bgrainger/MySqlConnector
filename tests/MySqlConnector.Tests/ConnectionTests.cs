@@ -179,7 +179,7 @@ public class ConnectionTests : IDisposable
 	[Fact]
 	public void ConnectionTimeout()
 	{
-		m_server.BlockOnConnect = true;
+		m_server.ConnectDelay = TimeSpan.FromSeconds(10);
 		var csb = new MySqlConnectionStringBuilder(m_csb.ConnectionString);
 		csb.ConnectionTimeout = 4;
 		using var connection = new MySqlConnection(csb.ConnectionString);

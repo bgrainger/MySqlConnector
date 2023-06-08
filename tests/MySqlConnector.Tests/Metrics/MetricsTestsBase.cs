@@ -9,9 +9,10 @@ public abstract class MetricsTestsBase : IDisposable
 	public MetricsTestsBase()
 	{
 		m_measurements = new();
+		m_timeMeasurements = new();
 
-		m_server = new FakeMySqlServer();
-		m_server.Start();
+		Server = new FakeMySqlServer();
+		Server.Start();
 
 		m_meterListener = new MeterListener
 		{
@@ -22,6 +23,7 @@ public abstract class MetricsTestsBase : IDisposable
 			}
 		};
 		m_meterListener.SetMeasurementEventCallback<int>(OnMeasurementRecorded);
+		m_meterListener.SetMeasurementEventCallback<float>(OnMeasurementRecorded);
 		m_meterListener.Start();
 	}
 
@@ -36,18 +38,18 @@ public abstract class MetricsTestsBase : IDisposable
 		if (disposing)
 		{
 			m_meterListener.Dispose();
-			m_server.Stop();
+			Server.Stop();
 		}
 	}
 
 	protected string? PoolName { get; set; }
-	protected int ServerActiveConnections => m_server.ActiveConnections;
+	protected FakeMySqlServer Server { get; }
 
 	protected MySqlConnectionStringBuilder CreateConnectionStringBuilder() =>
 		new MySqlConnectionStringBuilder
 		{
 			Server = "localhost",
-			Port = (uint) m_server.Port,
+			Port = (uint) Server.Port,
 			UserID = "test",
 			Password = "test",
 		};
@@ -58,17 +60,17 @@ public abstract class MetricsTestsBase : IDisposable
 			Assert.Equal(expected, m_measurements.GetValueOrDefault(name));
 	}
 
+	protected List<float> GetAndClearMeasurements(string name)
+	{
+		if (!m_timeMeasurements.TryGetValue(name, out var list))
+			list = new List<float>();
+		m_timeMeasurements[name] = new List<float>();
+		return list;
+	}
+
 	private void OnMeasurementRecorded(Instrument instrument, int measurement, ReadOnlySpan<KeyValuePair<string, object?>> tags, object? state)
 	{
-		var poolName = "";
-		var stateTag = "";
-		foreach (var tag in tags)
-		{
-			if (tag.Key == "pool.name" && tag.Value is string s1)
-				poolName = s1;
-			else if (tag.Key == "state" && tag.Value is string s2)
-				stateTag = s2;
-		}
+		var (poolName, stateTag) = GetTags(tags);
 		if (poolName != PoolName)
 			return;
 
@@ -80,7 +82,36 @@ public abstract class MetricsTestsBase : IDisposable
 		}
 	}
 
+	private void OnMeasurementRecorded(Instrument instrument, float measurement, ReadOnlySpan<KeyValuePair<string, object?>> tags, object? state)
+	{
+		var (poolName, stateTag) = GetTags(tags);
+		if (poolName != PoolName)
+			return;
+
+		lock (m_timeMeasurements)
+		{
+			if (!m_timeMeasurements.TryGetValue(instrument.Name, out var list))
+				list = m_timeMeasurements[instrument.Name] = new List<float>();
+			list.Add(measurement);
+		}
+	}
+
+	private (string PoolName, string State) GetTags(ReadOnlySpan<KeyValuePair<string, object?>> tags)
+	{
+		var poolName = "";
+		var state = "";
+		foreach (var tag in tags)
+		{
+			if (tag.Key == "pool.name" && tag.Value is string s1)
+				poolName = s1;
+			else if (tag.Key == "state" && tag.Value is string s2)
+				state = s2;
+		}
+		return (poolName, state);
+	}
+
+
 	private readonly Dictionary<string, int> m_measurements;
-	private readonly FakeMySqlServer m_server;
+	private readonly Dictionary<string, List<float>> m_timeMeasurements;
 	private readonly MeterListener m_meterListener;
 }

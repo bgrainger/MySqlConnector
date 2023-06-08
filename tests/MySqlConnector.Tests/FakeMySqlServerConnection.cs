@@ -25,8 +25,8 @@ internal sealed class FakeMySqlServerConnection
 			using (client)
 			using (var stream = client.GetStream())
 			{
-				if (m_server.BlockOnConnect)
-					Thread.Sleep(TimeSpan.FromSeconds(10));
+				if (m_server.ConnectDelay is { } connectDelay)
+					await Task.Delay(connectDelay);
 
 				await SendAsync(stream, 0, WriteInitialHandshake);
 				await ReadPayloadAsync(stream, token); // handshake response
@@ -60,7 +60,12 @@ internal sealed class FakeMySqlServerConnection
 						break;
 
 					case CommandKind.Ping:
+						await SendAsync(stream, 1, WriteOk);
+						break;
+
 					case CommandKind.ResetConnection:
+						if (m_server.ResetDelay is { } resetDelay)
+							await Task.Delay(resetDelay);
 						await SendAsync(stream, 1, WriteOk);
 						break;
 

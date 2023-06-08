@@ -49,7 +49,8 @@ public sealed class FakeMySqlServer
 
 	public bool SuppressAuthPluginNameTerminatingNull { get; set; }
 	public bool SendIncompletePostHandshakeResponse { get; set; }
-	public bool BlockOnConnect { get; set; }
+	public TimeSpan? ConnectDelay { get; set; }
+	public TimeSpan? ResetDelay { get; set; }
 
 	internal void CancelQuery(int connectionId)
 	{
