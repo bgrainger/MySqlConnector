@@ -205,4 +205,41 @@ public class ConnectionsUsageTests : MetricsTestsBase
 		AssertMeasurement("db.client.connections.usage|used", 0);
 		Assert.Equal(2, Server.ActiveConnections);
 	}
+
+	[Fact]
+	public async Task PendingRequestForCreation()
+	{
+		var csb = CreateConnectionStringBuilder();
+		PoolName = csb.GetConnectionString(includePassword: false);
+		Server.ConnectDelay = TimeSpan.FromSeconds(0.5);
+
+		AssertMeasurement("db.client.connections.pending_requests", 0);
+
+		using var connection = new MySqlConnection(csb.ConnectionString);
+		var openTask = connection.OpenAsync();
+		AssertMeasurement("db.client.connections.pending_requests", 1);
+		await openTask;
+
+		AssertMeasurement("db.client.connections.pending_requests", 0);
+	}
+
+	[Fact]
+	public async Task PendingRequestForOpenFromPool()
+	{
+		var csb = CreateConnectionStringBuilder();
+		PoolName = csb.GetConnectionString(includePassword: false);
+		Server.ResetDelay = TimeSpan.FromSeconds(0.5);
+
+		using var connection = new MySqlConnection(csb.ConnectionString);
+		await connection.OpenAsync();
+		connection.Close();
+
+		AssertMeasurement("db.client.connections.pending_requests", 0);
+
+		var openTask = connection.OpenAsync();
+		AssertMeasurement("db.client.connections.pending_requests", 1);
+		await openTask;
+
+		AssertMeasurement("db.client.connections.pending_requests", 0);
+	}
 }

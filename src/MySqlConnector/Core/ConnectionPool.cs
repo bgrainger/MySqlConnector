@@ -20,6 +20,8 @@ internal sealed class ConnectionPool : IDisposable
 
 	public SslProtocols SslProtocols { get; set; }
 
+	public void AddPendingRequestCount(int delta) => s_pendingRequestsCounter.Add(delta, PoolNameTagList);
+
 	public async ValueTask<ServerSession> GetSessionAsync(MySqlConnection connection, int startTickCount, Activity? activity, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
@@ -818,6 +820,8 @@ internal sealed class ConnectionPool : IDisposable
 		unit: "{connection}", description: "The minimum number of idle open connections allowed.");
 	private static readonly UpDownCounter<int> s_maxConnectionsCounter = ActivitySourceHelper.Meter.CreateUpDownCounter<int>("db.client.connections.max",
 		unit: "{connection}", description: "The maximum number of open connections allowed.");
+	private static readonly UpDownCounter<int> s_pendingRequestsCounter = ActivitySourceHelper.Meter.CreateUpDownCounter<int>("db.client.connections.pending_requests",
+		unit: "{request}", description: "The number of pending requests for an open connection, cumulative for the entire pool.");
 	private static readonly Histogram<float> s_createTimeHistory = ActivitySourceHelper.Meter.CreateHistogram<float>("db.client.connections.create_time",
 		unit: "ms", description: "The time it took to create a new connection.");
 	private static readonly Histogram<float> s_waitTimeHistory = ActivitySourceHelper.Meter.CreateHistogram<float>("db.client.connections.wait_time",
