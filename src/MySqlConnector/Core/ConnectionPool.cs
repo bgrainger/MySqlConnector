@@ -811,21 +811,17 @@ internal sealed class ConnectionPool : IDisposable
 		ClearPoolsAsync(IOBehavior.Synchronous, CancellationToken.None).GetAwaiter().GetResult();
 
 	private static readonly UpDownCounter<int> s_connectionsUsageCounter = ActivitySourceHelper.Meter.CreateUpDownCounter<int>("db.client.connections.usage",
-		unit: "connections",
-		description: "The number of connections that are currently in the state described by the state tag.");
+		unit: "{connection}", description: "The number of connections that are currently in the state described by the state tag.");
 	private static readonly UpDownCounter<int> s_maxIdleConnectionsCounter = ActivitySourceHelper.Meter.CreateUpDownCounter<int>("db.client.connections.idle.max",
-		unit: "connections",
-		description: "The maximum number of idle open connections allowed.");
+		unit: "{connection}", description: "The maximum number of idle open connections allowed.");
 	private static readonly UpDownCounter<int> s_minIdleConnectionsCounter = ActivitySourceHelper.Meter.CreateUpDownCounter<int>("db.client.connections.idle.min",
-		unit: "connections",
-		description: "The minimum number of idle open connections allowed.");
+		unit: "{connection}", description: "The minimum number of idle open connections allowed.");
 	private static readonly UpDownCounter<int> s_maxConnectionsCounter = ActivitySourceHelper.Meter.CreateUpDownCounter<int>("db.client.connections.max",
-		unit: "connections",
-		description: "The maximum number of open connections allowed.");
+		unit: "{connection}", description: "The maximum number of open connections allowed.");
 	private static readonly Histogram<float> s_createTimeHistory = ActivitySourceHelper.Meter.CreateHistogram<float>("db.client.connections.create_time",
-		unit: "milliseconds", description: "The time it took to create a new connection.");
+		unit: "ms", description: "The time it took to create a new connection.");
 	private static readonly Histogram<float> s_waitTimeHistory = ActivitySourceHelper.Meter.CreateHistogram<float>("db.client.connections.wait_time",
-		unit: "milliseconds", description: "The time it took to obtain an open connection from the pool.");
+		unit: "ms", description: "The time it took to obtain an open connection from the pool.");
 	private static readonly ConcurrentDictionary<string, ConnectionPool?> s_pools = new();
 	private static readonly Action<ILogger, int, string, Exception?> s_createdNewSession = LoggerMessage.Define<int, string>(
 		LogLevel.Debug, new EventId(EventIds.PoolCreatedNewSession, nameof(EventIds.PoolCreatedNewSession)),

@@ -1960,7 +1960,7 @@ internal sealed partial class ServerSession
 	private static partial void ExpectedSessionState6(ILogger logger, string sessionId, State expectedState1, State expectedState2, State expectedState3, State expectedState4, State expectedState5, State expectedState6, State sessionState);
 
 	private static readonly Histogram<float> s_useTimeHistory = ActivitySourceHelper.Meter.CreateHistogram<float>("db.client.connections.use_time",
-		unit: "milliseconds", description: "The time it took to create a new connection.");
+		unit: "ms", description: "The time it took to create a new connection.");
 	private static ReadOnlySpan<byte> BeginCertificateBytes => "-----BEGIN CERTIFICATE-----"u8;
 	private static readonly PayloadData s_setNamesUtf8NoAttributesPayload = QueryPayload.Create(false, "SET NAMES utf8;"u8);
 	private static readonly PayloadData s_setNamesUtf8mb4NoAttributesPayload = QueryPayload.Create(false, "SET NAMES utf8mb4;"u8);
