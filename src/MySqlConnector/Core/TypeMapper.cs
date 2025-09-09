@@ -227,9 +227,9 @@ internal sealed class TypeMapper
 				return MySqlDbType.Bit;
 
 			case ColumnType.String:
-				if (guidFormat == MySqlGuidFormat.Char36 && columnDefinition.ColumnLength / ProtocolUtility.GetBytesPerCharacter(columnDefinition.CharacterSet) == 36)
+				if (guidFormat == MySqlGuidFormat.Char36 && columnDefinition.ColumnLength / columnDefinition.CharacterSet.BytesPerCharacter == 36)
 					return MySqlDbType.Guid;
-				if (guidFormat == MySqlGuidFormat.Char32 && columnDefinition.ColumnLength / ProtocolUtility.GetBytesPerCharacter(columnDefinition.CharacterSet) == 32)
+				if (guidFormat == MySqlGuidFormat.Char32 && columnDefinition.ColumnLength / columnDefinition.CharacterSet.BytesPerCharacter == 32)
 					return MySqlDbType.Guid;
 				if ((columnDefinition.ColumnFlags & ColumnFlags.Enum) != 0)
 					return MySqlDbType.Enum;

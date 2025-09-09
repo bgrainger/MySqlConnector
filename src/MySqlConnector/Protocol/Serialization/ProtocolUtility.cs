@@ -5,7 +5,12 @@ namespace MySqlConnector.Protocol.Serialization;
 
 internal static class ProtocolUtility
 {
-	public static int GetBytesPerCharacter(CharacterSet characterSet)
+	extension(CharacterSet characterSet)
+	{
+		public int BytesPerCharacter => GetBytesPerCharacter(characterSet);
+	}
+
+	private static int GetBytesPerCharacter(CharacterSet characterSet)
 	{
 		switch (characterSet)
 		{

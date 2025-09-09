@@ -22,7 +22,7 @@ public class CharacterSetTests : IClassFixture<DatabaseFixture>
 			var characterSet = (CharacterSet) reader.GetInt32(0);
 			var maxLength = reader.GetInt32(1);
 
-			Assert.Equal(maxLength, ProtocolUtility.GetBytesPerCharacter(characterSet));
+			Assert.Equal(maxLength, characterSet.BytesPerCharacter);
 		}
 	}
 #endif

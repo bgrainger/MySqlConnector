@@ -297,7 +297,7 @@ internal sealed class ResultSet(MySqlDataReader dataReader)
 
 		var mySqlDbType = GetColumnType(ordinal);
 		if (mySqlDbType == MySqlDbType.String)
-			return string.Format(CultureInfo.InvariantCulture, "CHAR({0})", ColumnDefinitions[ordinal].ColumnLength / ProtocolUtility.GetBytesPerCharacter(ColumnDefinitions[ordinal].CharacterSet));
+			return string.Format(CultureInfo.InvariantCulture, "CHAR({0})", ColumnDefinitions[ordinal].ColumnLength / ColumnDefinitions[ordinal].CharacterSet.BytesPerCharacter);
 		return TypeMapper.Instance.GetColumnTypeMetadata(mySqlDbType).SimpleDataTypeName;
 	}
 

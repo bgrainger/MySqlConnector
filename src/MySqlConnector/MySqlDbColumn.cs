@@ -14,7 +14,7 @@ public sealed class MySqlDbColumn : DbColumn
 
 		var type = columnTypeMetadata.DbTypeMapping.ClrType;
 		var columnSize = type == typeof(string) || type == typeof(Guid) ?
-			column.ColumnLength / ProtocolUtility.GetBytesPerCharacter(column.CharacterSet) :
+			column.ColumnLength / column.CharacterSet.BytesPerCharacter :
 			column.ColumnType == ColumnType.Vector ? column.ColumnLength / 4 :
 			column.ColumnLength;
 

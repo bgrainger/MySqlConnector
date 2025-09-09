@@ -29,61 +29,67 @@ internal static class Utility
 	}
 
 #if !NETCOREAPP2_1_OR_GREATER && !NETSTANDARD2_1_OR_GREATER
-	public static string GetString(this Encoding encoding, ReadOnlySpan<byte> span)
+	extension(Encoding encoding)
 	{
-		if (span.Length == 0)
-			return "";
-		unsafe
+		public string GetString(ReadOnlySpan<byte> span)
 		{
-			fixed (byte* ptr = &MemoryMarshal.GetReference(span))
-				return encoding.GetString(ptr, span.Length);
-		}
-	}
-
-	public static unsafe int GetByteCount(this Encoding encoding, ReadOnlySpan<char> chars)
-	{
-		if (chars.Length == 0)
-			return 0;
-
-		fixed (char* charsPtr = &MemoryMarshal.GetReference(chars))
-		{
-			return encoding.GetByteCount(charsPtr, chars.Length);
-		}
-	}
-
-	public static unsafe int GetBytes(this Encoding encoding, ReadOnlySpan<char> chars, Span<byte> bytes)
-	{
-		fixed (char* charsPtr = &MemoryMarshal.GetReference(chars))
-		{
-			fixed (byte* bytesPtr = &MemoryMarshal.GetReference(bytes))
+			if (span.Length == 0)
+				return "";
+			unsafe
 			{
-				return encoding.GetBytes(charsPtr, chars.Length, bytesPtr, bytes.Length);
+				fixed (byte* ptr = &MemoryMarshal.GetReference(span))
+					return encoding.GetString(ptr, span.Length);
+			}
+		}
+
+		public unsafe int GetByteCount(ReadOnlySpan<char> chars)
+		{
+			if (chars.Length == 0)
+				return 0;
+
+			fixed (char* charsPtr = &MemoryMarshal.GetReference(chars))
+			{
+				return encoding.GetByteCount(charsPtr, chars.Length);
+			}
+		}
+
+		public unsafe int GetBytes(ReadOnlySpan<char> chars, Span<byte> bytes)
+		{
+			fixed (char* charsPtr = &MemoryMarshal.GetReference(chars))
+			{
+				fixed (byte* bytesPtr = &MemoryMarshal.GetReference(bytes))
+				{
+					return encoding.GetBytes(charsPtr, chars.Length, bytesPtr, bytes.Length);
+				}
 			}
 		}
 	}
 #endif
 
 #if !NETCOREAPP2_1_OR_GREATER && !NETSTANDARD2_1_OR_GREATER
-	public static unsafe void Convert(this Encoder encoder, ReadOnlySpan<char> chars, Span<byte> bytes, bool flush, out int charsUsed, out int bytesUsed, out bool completed)
+	extension(Encoder encoder)
 	{
-		fixed (char* charsPtr = &MemoryMarshal.GetReference(chars))
+		public unsafe void Convert(ReadOnlySpan<char> chars, Span<byte> bytes, bool flush, out int charsUsed, out int bytesUsed, out bool completed)
 		{
-			fixed (byte* bytesPtr = &MemoryMarshal.GetReference(bytes))
+			fixed (char* charsPtr = &MemoryMarshal.GetReference(chars))
+			{
+				fixed (byte* bytesPtr = &MemoryMarshal.GetReference(bytes))
+				{
+					// MemoryMarshal.GetNonNullPinnableReference is internal, so fake it by using an invalid but non-null pointer; this
+					// prevents Convert from throwing an exception when the output buffer is empty
+					encoder.Convert(charsPtr, chars.Length, bytesPtr is null ? (byte*) 1 : bytesPtr, bytes.Length, flush, out charsUsed, out bytesUsed, out completed);
+				}
+			}
+		}
+
+		public unsafe int GetByteCount(ReadOnlySpan<char> chars, bool flush)
+		{
+			fixed (char* charsPtr = &MemoryMarshal.GetReference(chars))
 			{
 				// MemoryMarshal.GetNonNullPinnableReference is internal, so fake it by using an invalid but non-null pointer; this
 				// prevents Convert from throwing an exception when the output buffer is empty
-				encoder.Convert(charsPtr, chars.Length, bytesPtr is null ? (byte*) 1 : bytesPtr, bytes.Length, flush, out charsUsed, out bytesUsed, out completed);
+				return encoder.GetByteCount(charsPtr, chars.Length, flush);
 			}
-		}
-	}
-
-	public static unsafe int GetByteCount(this Encoder encoder, ReadOnlySpan<char> chars, bool flush)
-	{
-		fixed (char* charsPtr = &MemoryMarshal.GetReference(chars))
-		{
-			// MemoryMarshal.GetNonNullPinnableReference is internal, so fake it by using an invalid but non-null pointer; this
-			// prevents Convert from throwing an exception when the output buffer is empty
-			return encoder.GetByteCount(charsPtr, chars.Length, flush);
 		}
 	}
 #endif
@@ -284,24 +290,26 @@ internal static class Utility
 #endif
 
 #if !NETSTANDARD2_1_OR_GREATER && !NETCOREAPP2_0_OR_GREATER
-	/// <summary>
-	/// Returns a new <see cref="ArraySegment{T}"/> that starts at index <paramref name="index"/> into <paramref name="arraySegment"/>.
-	/// </summary>
 	/// <param name="arraySegment">The <see cref="ArraySegment{T}"/> from which to create a slice.</param>
-	/// <param name="index">The non-negative, zero-based starting index of the new slice (relative to <see cref="ArraySegment{T}.Offset"/> of <paramref name="arraySegment"/>.</param>
-	/// <returns>A new <see cref="ArraySegment{T}"/> starting at the <paramref name="index"/>th element of <paramref name="arraySegment"/> and continuing to the end of <paramref name="arraySegment"/>.</returns>
-	public static ArraySegment<T> Slice<T>(this ArraySegment<T> arraySegment, int index) =>
-		new(arraySegment.Array!, arraySegment.Offset + index, arraySegment.Count - index);
+	extension<T>(ArraySegment<T> arraySegment)
+	{
+		/// <summary>
+		/// Returns a new <see cref="ArraySegment{T}"/> that starts at index <paramref name="index"/> into <paramref name="arraySegment"/>.
+		/// </summary>
+		/// <param name="index">The non-negative, zero-based starting index of the new slice (relative to <see cref="ArraySegment{T}.Offset"/> of <paramref name="arraySegment"/>.</param>
+		/// <returns>A new <see cref="ArraySegment{T}"/> starting at the <paramref name="index"/>th element of <paramref name="arraySegment"/> and continuing to the end of <paramref name="arraySegment"/>.</returns>
+		public ArraySegment<T> Slice(int index) =>
+			new(arraySegment.Array!, arraySegment.Offset + index, arraySegment.Count - index);
 
-	/// <summary>
-	/// Returns a new <see cref="ArraySegment{T}"/> that starts at index <paramref name="index"/> into <paramref name="arraySegment"/> and has a length of <paramref name="length"/>.
-	/// </summary>
-	/// <param name="arraySegment">The <see cref="ArraySegment{T}"/> from which to create a slice.</param>
-	/// <param name="index">The non-negative, zero-based starting index of the new slice (relative to <see cref="ArraySegment{T}.Offset"/> of <paramref name="arraySegment"/>.</param>
-	/// <param name="length">The non-negative length of the new slice.</param>
-	/// <returns>A new <see cref="ArraySegment{T}"/> of length <paramref name="length"/>, starting at the <paramref name="index"/>th element of <paramref name="arraySegment"/>.</returns>
-	public static ArraySegment<T> Slice<T>(this ArraySegment<T> arraySegment, int index, int length) =>
-		new(arraySegment.Array!, arraySegment.Offset + index, length);
+		/// <summary>
+		/// Returns a new <see cref="ArraySegment{T}"/> that starts at index <paramref name="index"/> into <paramref name="arraySegment"/> and has a length of <paramref name="length"/>.
+		/// </summary>
+		/// <param name="index">The non-negative, zero-based starting index of the new slice (relative to <see cref="ArraySegment{T}.Offset"/> of <paramref name="arraySegment"/>.</param>
+		/// <param name="length">The non-negative length of the new slice.</param>
+		/// <returns>A new <see cref="ArraySegment{T}"/> of length <paramref name="length"/>, starting at the <paramref name="index"/>th element of <paramref name="arraySegment"/>.</returns>
+		public ArraySegment<T> Slice(int index, int length) =>
+			new(arraySegment.Array!, arraySegment.Offset + index, length);
+	}
 #endif
 
 #if !NET5_0_OR_GREATER
@@ -473,35 +481,38 @@ internal static class Utility
 	public static ReadOnlySpan<byte> TrimZeroByte(ReadOnlySpan<byte> value) =>
 		value is [.., 0] ? value[..^1] : value;
 
+	extension(Stream stream)
+	{
 #if !NETCOREAPP2_1_OR_GREATER && !NETSTANDARD2_1_OR_GREATER
-	public static int Read(this Stream stream, Memory<byte> buffer)
-	{
-		_ = MemoryMarshal.TryGetArray<byte>(buffer, out var arraySegment);
-		return stream.Read(arraySegment.Array, arraySegment.Offset, arraySegment.Count);
-	}
+		public int Read(Memory<byte> buffer)
+		{
+			_ = MemoryMarshal.TryGetArray<byte>(buffer, out var arraySegment);
+			return stream.Read(arraySegment.Array, arraySegment.Offset, arraySegment.Count);
+		}
 
-	public static Task<int> ReadAsync(this Stream stream, Memory<byte> buffer)
-	{
-		_ = MemoryMarshal.TryGetArray<byte>(buffer, out var arraySegment);
-		return stream.ReadAsync(arraySegment.Array, arraySegment.Offset, arraySegment.Count);
-	}
+		public Task<int> ReadAsync(Memory<byte> buffer)
+		{
+			_ = MemoryMarshal.TryGetArray<byte>(buffer, out var arraySegment);
+			return stream.ReadAsync(arraySegment.Array, arraySegment.Offset, arraySegment.Count);
+		}
 
-	public static void Write(this Stream stream, ReadOnlyMemory<byte> data)
-	{
-		_ = MemoryMarshal.TryGetArray(data, out var arraySegment);
-		stream.Write(arraySegment.Array, arraySegment.Offset, arraySegment.Count);
-	}
+		public void Write(ReadOnlyMemory<byte> data)
+		{
+			_ = MemoryMarshal.TryGetArray(data, out var arraySegment);
+			stream.Write(arraySegment.Array, arraySegment.Offset, arraySegment.Count);
+		}
 
-	public static Task WriteAsync(this Stream stream, ReadOnlyMemory<byte> data)
-	{
-		_ = MemoryMarshal.TryGetArray(data, out var arraySegment);
-		return stream.WriteAsync(arraySegment.Array, arraySegment.Offset, arraySegment.Count);
-	}
+		public Task WriteAsync(ReadOnlyMemory<byte> data)
+		{
+			_ = MemoryMarshal.TryGetArray(data, out var arraySegment);
+			return stream.WriteAsync(arraySegment.Array, arraySegment.Offset, arraySegment.Count);
+		}
 #else
-	public static int Read(this Stream stream, Memory<byte> buffer) => stream.Read(buffer.Span);
+		public int Read(Memory<byte> buffer) => stream.Read(buffer.Span);
 
-	public static void Write(this Stream stream, ReadOnlyMemory<byte> data) => stream.Write(data.Span);
+		public void Write(ReadOnlyMemory<byte> data) => stream.Write(data.Span);
 #endif
+	}
 
 #if !NETCOREAPP2_0_OR_GREATER && !NETSTANDARD2_1_OR_GREATER
 	public static bool StartsWith(this string str, char value) => !string.IsNullOrEmpty(str) && str[0] == value;

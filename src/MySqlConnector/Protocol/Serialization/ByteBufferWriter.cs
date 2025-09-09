@@ -247,48 +247,51 @@ internal sealed class ByteBufferWriter : IBufferWriter<byte>
 
 internal static class ByteBufferWriterExtensions
 {
-	public static void WriteLengthEncodedInteger(this ByteBufferWriter writer, ulong value)
+	extension(ByteBufferWriter writer)
 	{
-		switch (value)
+		public void WriteLengthEncodedInteger(ulong value)
 		{
-			case < 251:
-				writer.Write((byte) value);
-				break;
+			switch (value)
+			{
+				case < 251:
+					writer.Write((byte) value);
+					break;
 
-			case < 65536:
-				writer.Write((byte) 0xfc);
-				writer.Write((ushort) value);
-				break;
+				case < 65536:
+					writer.Write((byte) 0xfc);
+					writer.Write((ushort) value);
+					break;
 
-			case < 16777216:
-				writer.Write((uint) ((value << 8) | 0xfd));
-				break;
+				case < 16777216:
+					writer.Write((uint) ((value << 8) | 0xfd));
+					break;
 
-			default:
-				writer.Write((byte) 0xfe);
-				writer.Write(value);
-				break;
+				default:
+					writer.Write((byte) 0xfe);
+					writer.Write(value);
+					break;
+			}
 		}
-	}
 
-	public static void WriteLengthEncodedString(this ByteBufferWriter writer, string value) => writer.WriteLengthEncodedString(value.AsSpan());
+		public void WriteLengthEncodedString(string value) => writer.WriteLengthEncodedString(value.AsSpan());
 
-	public static void WriteLengthEncodedString(this ByteBufferWriter writer, ReadOnlySpan<char> value)
-	{
-		var byteCount = Encoding.UTF8.GetByteCount(value);
-		writer.WriteLengthEncodedInteger((ulong) byteCount);
-		writer.Write(value);
-	}
+		public void WriteLengthEncodedString(ReadOnlySpan<char> value)
+		{
+			var byteCount = Encoding.UTF8.GetByteCount(value);
+			writer.WriteLengthEncodedInteger((ulong) byteCount);
+			writer.Write(value);
+		}
 
-	public static void WriteLengthEncodedAsciiString(this ByteBufferWriter writer, string value)
-	{
-		writer.WriteLengthEncodedInteger((ulong) value.Length);
-		writer.WriteAscii(value.AsSpan());
-	}
+		public void WriteLengthEncodedAsciiString(string value)
+		{
+			writer.WriteLengthEncodedInteger((ulong) value.Length);
+			writer.WriteAscii(value.AsSpan());
+		}
 
-	public static void WriteNullTerminatedString(this ByteBufferWriter writer, string value)
-	{
-		writer.Write(value);
-		writer.Write((byte) 0);
+		public void WriteNullTerminatedString(string value)
+		{
+			writer.Write(value);
+			writer.Write((byte) 0);
+		}
 	}
 }
